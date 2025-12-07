@@ -8,7 +8,7 @@
     <!-- 性能优化：预连接 CDN -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     
-    <!-- 引入 Pannellum 库 (添加 defer 属性，不阻塞页面渲染) -->
+    <!-- 引入 Pannellum 库 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js" defer></script>
 
@@ -39,43 +39,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            transition: transform 0.5s ease;
-        }
-
-        /* --- 强制横屏逻辑 (核心修改) --- */
-        /* 仅在竖屏且屏幕较窄（手机）时生效 */
-        @media screen and (orientation: portrait) and (max-width: 900px) {
-            body.force-landscape #main-container {
-                width: 100vh;
-                height: 100vw;
-                /* 核心旋转逻辑 */
-                transform: rotate(90deg);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 100%; 
-            }
-            
-            /* 修正旋转后的弹窗位置 */
-            body.force-landscape #toast-msg {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%) rotate(90deg);
-                /* 调整 Toast 在横屏模式下的位置，使其看起来在"顶部" */
-                margin-left: 40vh; 
-            }
-            
-            /* 修正旋转后的面板位置 */
-            body.force-landscape #gallery-panel {
-                bottom: auto;
-                left: auto;
-                top: 50%;
-                right: 20px; /* 视觉上的底部 */
-                transform: translateY(-50%) rotate(90deg);
-                width: 70vh;
-                max-height: 80vw;
-            }
         }
 
         /* 全景容器 */
@@ -100,6 +63,9 @@
             z-index: 100;
             color: var(--text-color);
             transition: opacity 0.6s ease;
+            /* 确保在小屏幕上有足够的内边距防止贴边 */
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .landing-bg {
@@ -111,14 +77,12 @@
             background-color: #111; 
             background-size: cover;
             background-position: center;
-            /* 增加模糊度，因为现在使用的是低清缩略图，模糊处理既美观又遮丑 */
             filter: blur(40px) brightness(0.6); 
             z-index: -1;
             transition: opacity 1s ease-in-out; 
-            will-change: transform, opacity;
         }
 
-        /* 参考 Liquid Glass 风格的卡片 */
+        /* --- 核心修复：内容卡片 --- */
         .landing-content {
             background: var(--glass-bg);
             backdrop-filter: blur(40px) saturate(200%) brightness(1.2);
@@ -132,24 +96,39 @@
                 0 0 0 1px rgba(255,255,255,0.1);
             border: 1px solid var(--glass-border);
             text-align: center;
-            max-width: 90%;
-            width: 340px;
-            position: relative;
+            max-width: 400px;
+            width: 100%;
+            
+            /* 修复遮挡关键：弹性布局与滚动 */
             display: flex;
             flex-direction: column;
             align-items: center;
+            
+            /* 限制最大高度，防止撑破屏幕 */
+            max-height: 85vh; 
+            /* 如果内容溢出，允许垂直滚动 */
+            overflow-y: auto; 
+            
+            position: relative;
             transform: translateY(20px);
             opacity: 0;
             animation: contentFadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
             animation-delay: 0.2s;
+            
+            /* 隐藏滚动条但保留功能 */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
         }
         
-        /* 移动端优化 */
+        .landing-content::-webkit-scrollbar { 
+            display: none; 
+        }
+        
         @media (max-width: 600px) {
             .landing-content {
                 padding: 24px 20px;
-                width: 85%;
                 border-radius: 32px;
+                width: 90%;
             }
             h1 {
                 font-size: 20px;
@@ -158,10 +137,10 @@
                 font-size: 12px;
                 margin-bottom: 15px;
             }
+            /* 移动端缩小缩略图尺寸 */
             .thumb-item {
-                flex: 0 0 60px;
-                height: 60px;
-                border-radius: 12px;
+                flex: 0 0 55px;
+                height: 55px;
             }
         }
 
@@ -175,6 +154,7 @@
             font-weight: 700;
             color: #fff;
             text-shadow: 0 2px 15px rgba(255,255,255,0.4);
+            flex-shrink: 0; /* 防止标题被压缩 */
         }
 
         p.subtitle {
@@ -182,9 +162,9 @@
             color: rgba(255,255,255,0.8);
             margin-bottom: 20px;
             font-weight: 500;
+            flex-shrink: 0;
         }
 
-        /* --- 首页缩略图选择器 --- */
         .landing-gallery {
             display: flex;
             gap: 12px;
@@ -194,6 +174,7 @@
             margin-bottom: 20px;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
+            flex-shrink: 0; /* 防止画廊被过度压缩 */
         }
         
         .landing-gallery::-webkit-scrollbar { display: none; }
@@ -214,11 +195,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.3s;
-        }
-
-        .thumb-item:hover img {
-            transform: scale(1.1);
         }
 
         .thumb-item.active {
@@ -242,7 +218,6 @@
             text-overflow: ellipsis;
         }
 
-        /* 启动按钮 */
         .start-btn {
             position: relative;
             background: rgba(255, 255, 255, 0.15);
@@ -255,74 +230,101 @@
             cursor: pointer;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            transition: transform 0.2s, background 0.3s;
             display: inline-flex;
             align-items: center;
             gap: 8px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6);
             width: 100%;
             justify-content: center;
+            margin-top: auto; /* 将按钮推到底部 */
+            flex-shrink: 0;
         }
 
-        .start-btn:active {
-            transform: scale(0.96);
-            background: rgba(255, 255, 255, 0.1);
+        /* --- 横屏提示遮罩层 (新增功能) --- */
+        #orientation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: none; /* 默认隐藏 */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
         }
 
-        /* 加载动画 */
-        .loader-container {
-            display: none;
-            margin-top: 20px;
+        /* 手机旋转动画 */
+        .phone-rotate-icon {
+            width: 60px;
+            height: 100px;
+            border: 4px solid rgba(255,255,255,0.8);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            position: relative;
+            animation: rotatePhone 2s infinite ease-in-out;
+        }
+        
+        .phone-rotate-icon::before {
+            content: '';
             position: absolute;
-            top: 50%;
+            top: 10px;
             left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 50;
+            transform: translateX(-50%);
+            width: 20%;
+            height: 4px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 2px;
         }
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid rgba(255,255,255,0.2);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s infinite cubic-bezier(0.55, 0.15, 0.45, 0.85);
-            margin: 0 auto;
-            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+
+        .rotate-text {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+            letter-spacing: 1px;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes rotatePhone {
+            0% { transform: rotate(0deg); opacity: 1; }
+            30% { transform: rotate(90deg); opacity: 1; }
+            70% { transform: rotate(90deg); opacity: 1; }
+            100% { transform: rotate(0deg); opacity: 1; }
+        }
+
+        /* 仅在竖屏且是移动设备尺寸时显示提示 */
+        @media screen and (orientation: portrait) and (max-width: 900px) {
+            #orientation-overlay {
+                display: flex;
+            }
+            /* 竖屏时隐藏主界面交互，防止误触 */
+            #main-container {
+                display: none;
+            }
+        }
 
         /* --- HUD (底部悬浮栏) --- */
         #hud-controls {
             position: absolute;
             bottom: 40px;
             left: 50%;
-            transform: translateX(-50%) translateY(200%); /* 初始隐藏 */
+            transform: translateX(-50%) translateY(200%);
             display: flex;
             gap: 20px;
             padding: 12px 24px;
-            
             background: rgba(255, 255, 255, 0.05); 
             backdrop-filter: blur(30px) saturate(220%) brightness(1.1);
             -webkit-backdrop-filter: blur(30px) saturate(220%) brightness(1.1);
             border-radius: 60px;
-            
-            box-shadow: 
-                0 25px 50px rgba(0,0,0,0.25),
-                inset 0 1px 0 rgba(255,255,255,0.5),
-                inset 0 -1px 0 rgba(255,255,255,0.1),
-                0 0 0 1px rgba(255,255,255,0.15);
-
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.5);
             z-index: 20;
             transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
         }
         
-        /* 闲置状态样式 */
-        #hud-controls.idle {
-            opacity: 0.3; /* 变透明 */
-        }
-        #hud-controls:hover, #hud-controls:active {
-            opacity: 1 !important; /* 交互时立刻显示 */
-        }
+        #hud-controls.idle { opacity: 0.3; }
+        #hud-controls:hover, #hud-controls:active { opacity: 1 !important; }
 
         .hud-btn {
             width: 44px;
@@ -336,7 +338,6 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            position: relative;
         }
         
         .hud-btn svg {
@@ -351,28 +352,24 @@
             border-color: rgba(255,255,255,0.2);
             color: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
 
-        /* --- 场景选择面板 (Gallery Panel - HUD用) --- */
+        /* --- 场景选择面板 --- */
         #gallery-panel {
             position: absolute;
-            bottom: 110px; /* HUD 上方 */
+            bottom: 110px;
             left: 50%;
             transform: translateX(-50%) scale(0.9);
             width: 300px;
-            max-height: 0; /* 默认关闭 */
+            max-height: 0;
             overflow: hidden;
             opacity: 0;
             pointer-events: none;
-            
             background: rgba(30, 30, 30, 0.4);
             backdrop-filter: blur(35px) saturate(180%);
             -webkit-backdrop-filter: blur(35px) saturate(180%);
             border-radius: 24px;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            
             transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
             z-index: 15;
             display: flex;
@@ -380,7 +377,7 @@
         }
 
         #gallery-panel.open {
-            max-height: 400px; /* 展开高度 */
+            max-height: 400px;
             opacity: 1;
             transform: translateX(-50%) scale(1);
             pointer-events: auto;
@@ -391,15 +388,12 @@
             padding: 10px 15px;
             font-size: 14px;
             color: rgba(255,255,255,0.6);
-            font-weight: 600;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 5px;
         }
 
         .gallery-list {
             overflow-y: auto;
             max-height: 300px;
-            padding-right: 5px;
         }
         .gallery-list::-webkit-scrollbar { width: 4px; }
         .gallery-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
@@ -411,18 +405,33 @@
             margin-bottom: 8px;
             border-radius: 16px;
             background: rgba(255,255,255,0.05);
-            border: 1px solid transparent;
             cursor: pointer;
-            transition: all 0.2s;
         }
-        .scene-item:hover { background: rgba(255,255,255,0.15); }
-        .scene-item.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); }
-
-        .scene-name { font-size: 14px; color: #fff; margin-left: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .scene-item.active { background: rgba(255,255,255,0.2); }
+        .scene-name { font-size: 14px; color: #fff; margin-left: 10px; }
         .scene-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); }
         .scene-item.active .scene-dot { background: var(--primary-color); box-shadow: 0 0 8px var(--primary-color); }
 
-        /* --- 顶部通知 Toast --- */
+        /* 全局 Loading */
+        .loader-container {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+        }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
         #toast-msg {
             position: absolute;
             top: 24px;
@@ -430,7 +439,6 @@
             transform: translateX(-50%) translateY(-150px);
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
             color: #fff;
             padding: 10px 24px;
             border-radius: 50px;
@@ -438,19 +446,21 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
-            border: 1px solid rgba(255, 255, 255, 0.2);
             z-index: 200;
             transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
-            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        #toast-msg.show {
-            transform: translateX(-50%) translateY(0);
-        }
+        #toast-msg.show { transform: translateX(-50%) translateY(0); }
 
     </style>
 </head>
 <body>
+
+    <!-- 横屏提示层 (新增) -->
+    <div id="orientation-overlay">
+        <div class="phone-rotate-icon"></div>
+        <div class="rotate-text">为了最佳体验，请旋转设备横屏浏览</div>
+    </div>
 
     <!-- 主容器 -->
     <div id="main-container">
@@ -464,7 +474,7 @@
                 
                 <!-- 首页场景选择器 -->
                 <div class="landing-gallery" id="landing-gallery">
-                    <!-- 缩略图由 JS 生成 -->
+                    <!-- JS 生成 -->
                 </div>
 
                 <button class="start-btn" id="startBtn">
@@ -476,7 +486,7 @@
             </div>
         </div>
 
-        <!-- 全局 Loading -->
+        <!-- Loading -->
         <div class="loader-container" id="loader">
             <div class="spinner"></div>
             <p style="font-size:12px; margin-top:8px; color:rgba(255,255,255,0.8); text-align:center;">Loading...</p>
@@ -487,37 +497,26 @@
 
         <!-- 底部控制栏 -->
         <div id="hud-controls">
-            <!-- 场景选择按钮 -->
-            <button class="hud-btn" id="btn-gallery" data-tooltip="切换场景">
+            <button class="hud-btn" id="btn-gallery" title="切换场景">
                 <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
             </button>
-            
             <div style="width:1px; height:24px; background:rgba(255,255,255,0.1); margin:auto 0;"></div>
-
-            <!-- 自动巡航 -->
-            <button class="hud-btn" id="btn-auto" data-tooltip="自动巡航">
+            <button class="hud-btn" id="btn-auto" title="自动巡航">
                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </button>
-
-            <!-- 开启体感 -->
-            <button class="hud-btn" id="btn-gyro" data-tooltip="开启体感">
+            <button class="hud-btn" id="btn-gyro" title="开启体感">
                 <svg viewBox="0 0 24 24"><path d="M7 3h10c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 2v14h10V5H7zm2 6h6v2H9v-2z"/></svg>
             </button>
-            
             <div style="width:1px; height:24px; background:rgba(255,255,255,0.1); margin:auto 0;"></div>
-
-            <!-- 全屏按钮 -->
-            <button class="hud-btn" id="btn-fullscreen" data-tooltip="全屏">
+            <button class="hud-btn" id="btn-fullscreen" title="全屏">
                 <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
             </button>
         </div>
 
-        <!-- 场景选择面板 (HUD中) -->
+        <!-- 场景选择面板 -->
         <div id="gallery-panel">
             <div class="gallery-header">场景列表</div>
-            <div class="gallery-list" id="gallery-list-container">
-                <!-- 列表项由 JS 生成 -->
-            </div>
+            <div class="gallery-list" id="gallery-list-container"></div>
         </div>
 
     </div>
@@ -529,20 +528,9 @@
     </div>
 
     <script>
-        // --- 场景列表配置 ---
         const SCENE_LIST = [
-            { 
-                id: 0, 
-                name: "东港 (P1)", 
-                url: "/img/P1.jpg", 
-                thumb: "/img/P1-1.jpg"
-            },
-            { 
-                id: 1, 
-                name: "阿尔卑斯山", 
-                url: "https://pannellum.org/images/alma.jpg", 
-                thumb: "https://pannellum.org/images/alma.jpg" 
-            },
+            { id: 0, name: "东港 (P1)", url: "/img/P1.jpg", thumb: "/img/P1-1.jpg" },
+            { id: 1, name: "阿尔卑斯山", url: "https://pannellum.org/images/alma.jpg", thumb: "https://pannellum.org/images/alma.jpg" },
         ];
 
         let currentSceneId = 0;
@@ -551,7 +539,6 @@
         let isGyroEnabled = false;
         let idleTimer;
 
-        // --- DOM 元素 ---
         const startBtn = document.getElementById('startBtn');
         const landingPage = document.getElementById('landing-page');
         const landingBg = document.getElementById('landing-bg');
@@ -562,175 +549,98 @@
         const galleryListContainer = document.getElementById('gallery-list-container');
         const toast = document.getElementById('toast-msg');
         const toastText = document.getElementById('toast-text');
-
-        // 定义按钮变量
         const btnGyro = document.getElementById('btn-gyro');
         const btnAuto = document.getElementById('btn-auto');
         const btnFullscreen = document.getElementById('btn-fullscreen');
 
-        // --- 优化核心 1: 移除 Bing 壁纸，使用本地缩略图 ---
-        // 优化思路：Bing 壁纸需要外部网络请求，且尺寸较大。
-        // 现在直接使用第一张全景图的"缩略图"作为背景。
-        // 配合 CSS 的 blur(40px) 滤镜，模糊的低清图效果很好，且加载极快。
         function loadLandingBackground() {
-            // 使用场景列表中的第一个缩略图
             const bgUrl = SCENE_LIST[0].thumb;
             landingBg.style.backgroundImage = `url('${bgUrl}')`;
             
-            // 并行预加载全景大图，为进入 VR 做准备
-            prefetchFirstScene();
+            // 预加载首图
+            const img = new Image();
+            img.src = SCENE_LIST[0].url;
         }
-        
         loadLandingBackground();
 
-        function prefetchFirstScene() {
-            const preloadLink = document.createElement('link');
-            preloadLink.rel = 'prefetch';
-            preloadLink.as = 'image';
-            preloadLink.href = SCENE_LIST[0].url;
-            document.head.appendChild(preloadLink);
-            console.log("正在预加载 VR 场景资源...");
-        }
-
-        // --- 优化核心 2: 首页也强制横屏逻辑 ---
-        function checkOrientation() {
-            // 简单判断：高度大于宽度即为竖屏
-            if (window.innerHeight > window.innerWidth) {
-                document.body.classList.add('force-landscape');
-            } else {
-                document.body.classList.remove('force-landscape');
-            }
-            if(viewer) viewer.resize();
-        }
-
-        // 立即执行一次检测
-        checkOrientation();
-        // 监听 resize 和 orientationchange
-        window.addEventListener('resize', checkOrientation);
-        window.addEventListener('orientationchange', () => {
-             setTimeout(checkOrientation, 100); // 延时一点以确保宽高已更新
-        });
-
-        // --- 渲染首页缩略图列表 ---
+        // 渲染首页列表
         function renderLandingGallery() {
             landingGallery.innerHTML = '';
             SCENE_LIST.forEach((scene, index) => {
                 const item = document.createElement('div');
                 item.className = `thumb-item ${index === currentSceneId ? 'active' : ''}`;
-                item.onclick = () => selectSceneFromLanding(index);
-                item.innerHTML = `
-                    <img src="${scene.thumb}" alt="${scene.name}">
-                    <div class="thumb-label">${scene.name}</div>
-                `;
+                item.onclick = () => {
+                    currentSceneId = index;
+                    renderLandingGallery();
+                    landingBg.style.opacity = 0;
+                    setTimeout(() => {
+                         landingBg.style.backgroundImage = `url('${SCENE_LIST[index].thumb}')`;
+                         landingBg.style.opacity = 1;
+                    }, 200);
+                };
+                item.innerHTML = `<img src="${scene.thumb}" alt="${scene.name}"><div class="thumb-label">${scene.name}</div>`;
                 landingGallery.appendChild(item);
             });
         }
         renderLandingGallery();
 
-        function selectSceneFromLanding(index) {
-            currentSceneId = index;
-            renderLandingGallery(); 
-            // 切换背景图 (可选，如果想让背景随选择变化)
-            landingBg.style.opacity = 0;
-            setTimeout(() => {
-                 landingBg.style.backgroundImage = `url('${SCENE_LIST[index].thumb}')`;
-                 landingBg.style.opacity = 1;
-            }, 200);
-        }
-
-        // --- 渲染 HUD 场景列表 (进入后) ---
+        // 渲染 HUD 列表
         function renderHUDGallery() {
             galleryListContainer.innerHTML = '';
             SCENE_LIST.forEach((scene, index) => {
                 const item = document.createElement('div');
                 item.className = `scene-item ${index === currentSceneId ? 'active' : ''}`;
                 item.onclick = () => switchSceneInVR(index);
-                item.innerHTML = `
-                    <div class="scene-dot"></div>
-                    <div class="scene-name">${scene.name}</div>
-                `;
+                item.innerHTML = `<div class="scene-dot"></div><div class="scene-name">${scene.name}</div>`;
                 galleryListContainer.appendChild(item);
             });
         }
-        renderHUDGallery(); 
 
-        // --- VR 内切换场景逻辑 ---
         function switchSceneInVR(index) {
             if (index === currentSceneId && galleryPanel.classList.contains('open')) {
                 toggleGalleryPanel();
                 return;
             }
-
             currentSceneId = index;
             toggleGalleryPanel(); 
             renderHUDGallery(); 
-            
             loader.style.display = 'block';
             document.getElementById('panorama').style.opacity = '0.5';
-
             initPannellum(isGyroEnabled);
         }
 
-        // --- 启动流程 ---
         startBtn.addEventListener('click', async () => {
+            // 点击进入，先尝试全屏
+            await toggleFullscreen(true);
+
             startBtn.style.display = 'none';
             document.querySelector('.subtitle').style.display = 'none';
             landingGallery.style.opacity = '0';
-            
             document.querySelector('h1').innerText = "VR 环境载入中...";
             loader.style.display = 'block';
 
-            // 尝试进入全屏
-            await toggleFullscreen(true);
-
-            // 尝试使用 API 锁定方向，如果失败则回退到 CSS 强制旋转
-            try {
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape');
-                    // 如果系统锁定成功，移除 CSS 强制旋转类，防止冲突
-                    document.body.classList.remove('force-landscape'); 
-                }
-            } catch (e) {
-                // 锁定失败（如 iOS），保持 checkOrientation 的 CSS 逻辑
-                checkOrientation();
-            }
-
-            let permissionGranted = false;
-            // 检查 Pannellum 是否已加载
+            // 检查 Pannellum 加载
             if (typeof pannellum === 'undefined') {
-                await new Promise(resolve => {
-                    const check = setInterval(() => {
-                        if (typeof pannellum !== 'undefined') {
-                            clearInterval(check);
-                            resolve();
-                        }
-                    }, 100);
-                });
+                await new Promise(r => setTimeout(r, 1000)); 
             }
 
+            // 请求陀螺仪权限
+            let permissionGranted = false;
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
                     const state = await DeviceOrientationEvent.requestPermission();
                     if (state === 'granted') permissionGranted = true;
-                } catch (e) {
-                    console.error("Gyro permission error:", e);
-                }
+                } catch (e) { console.log(e); }
             } else {
-                permissionGranted = true; 
+                permissionGranted = true;
             }
 
-            setTimeout(() => {
-                initPannellum(permissionGranted);
-            }, 300);
+            setTimeout(() => initPannellum(permissionGranted), 500);
         });
 
-        // --- Pannellum 核心 ---
         function initPannellum(enableGyroInit) {
             const scene = SCENE_LIST[currentSceneId];
-            
-            if (viewer) {
-                try { viewer.destroy(); } catch(e) {}
-            }
+            if (viewer) { try { viewer.destroy(); } catch(e) {} }
 
             viewer = pannellum.viewer('panorama', {
                 "type": "equirectangular",
@@ -741,21 +651,14 @@
                 "mouseZoom": false,
                 "showControls": false,
                 "hfov": 100,
-                "minHfov": 50,
-                "maxHfov": 120,
-                "pitch": 0,
-                "yaw": 0,
-                "friction": 0.05,
                 "autoRotate": -2,
                 "autoRotateInactivityDelay": 3000,
                 "crossOrigin": "anonymous"
             });
 
-            viewer.on('error', (e) => {
-                console.error("加载失败:", e);
-                showToast(`场景 "${scene.name}" 加载失败`, "error");
+            viewer.on('error', () => {
+                showToast("加载失败", "error");
                 loader.style.display = 'none';
-                
                 if(landingPage.style.display !== 'none') {
                     startBtn.style.display = 'flex';
                     document.querySelector('h1').innerText = "加载失败，请重试";
@@ -765,83 +668,57 @@
             viewer.on('load', () => {
                 landingPage.style.opacity = '0';
                 setTimeout(() => landingPage.style.display = 'none', 600);
-                
                 document.getElementById('panorama').style.opacity = '1';
                 loader.style.display = 'none';
-
                 hudControls.style.transform = 'translateX(-50%) translateY(0)';
-
+                
                 isAutoRotating = true;
                 updateAutoBtnIcon();
 
-                if (enableGyroInit || isGyroEnabled) {
-                    toggleGyro(true); 
-                }
+                if (enableGyroInit || isGyroEnabled) toggleGyro(true);
                 
                 showToast(`已进入: ${scene.name}`);
                 renderHUDGallery();
-                resetIdleTimer(); // 启动闲置检测
+                resetIdleTimer();
             });
-
-            viewer.on('mousedown', () => { 
+            
+            ['mousedown', 'touchstart'].forEach(e => viewer.on(e, () => {
                 isAutoRotating = false; 
                 updateAutoBtnIcon(); 
                 resetIdleTimer();
-            });
-            viewer.on('touchstart', () => { 
-                isAutoRotating = false; 
-                updateAutoBtnIcon(); 
-                resetIdleTimer();
-            });
+            }));
         }
 
-        // --- 交互功能 ---
-
+        // 交互逻辑
         function toggleGalleryPanel() {
             galleryPanel.classList.toggle('open');
             document.getElementById('btn-gallery').classList.toggle('active');
-            resetIdleTimer(); // 操作菜单重置计时器
+            resetIdleTimer();
         }
-        document.getElementById('btn-gallery').addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            toggleGalleryPanel();
-        });
+        document.getElementById('btn-gallery').addEventListener('click', (e) => { e.stopPropagation(); toggleGalleryPanel(); });
         
         document.addEventListener('click', (e) => {
-            if (galleryPanel.classList.contains('open') && 
-                !galleryPanel.contains(e.target) && 
-                !document.getElementById('btn-gallery').contains(e.target)) {
+            if (galleryPanel.classList.contains('open') && !galleryPanel.contains(e.target) && !document.getElementById('btn-gallery').contains(e.target)) {
                 toggleGalleryPanel();
             }
-            resetIdleTimer(); // 全局点击重置计时器
+            resetIdleTimer();
         });
 
         function showToast(text, type = "info") {
             toastText.innerText = text;
-            toast.className = '';
-            if(type === 'error') toast.style.border = '1px solid var(--error-color)';
-            
+            toast.className = type === 'error' ? 'error' : '';
+            toast.style.border = type === 'error' ? '1px solid var(--error-color)' : '1px solid rgba(255,255,255,0.2)';
             toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         function toggleGyro(forceState) {
             if (!viewer) return;
             const newState = forceState !== undefined ? forceState : !isGyroEnabled;
             if (newState) {
-                try {
-                    viewer.startOrientation();
-                    isGyroEnabled = true;
-                    btnGyro.classList.add('active');
-                    if(!forceState) showToast("体感模式: 开");
-                } catch(e) {}
+                try { viewer.startOrientation(); isGyroEnabled = true; btnGyro.classList.add('active'); if(!forceState) showToast("体感模式: 开"); } catch(e) {}
             } else {
-                viewer.stopOrientation();
-                isGyroEnabled = false;
-                btnGyro.classList.remove('active');
-                if(!forceState) showToast("体感模式: 关");
+                viewer.stopOrientation(); isGyroEnabled = false; btnGyro.classList.remove('active'); if(!forceState) showToast("体感模式: 关");
             }
             resetIdleTimer();
         }
@@ -849,71 +726,39 @@
 
         function toggleAutoRotate() {
             if (!viewer) return;
-            if (isAutoRotating) {
-                viewer.stopAutoRotate();
-                isAutoRotating = false;
-            } else {
-                viewer.startAutoRotate(-2);
-                isAutoRotating = true;
-            }
+            if (isAutoRotating) { viewer.stopAutoRotate(); isAutoRotating = false; } 
+            else { viewer.startAutoRotate(-2); isAutoRotating = true; }
             updateAutoBtnIcon();
             resetIdleTimer();
         }
         btnAuto.addEventListener('click', toggleAutoRotate);
 
         function updateAutoBtnIcon() {
-            const path = isAutoRotating 
-                ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z" 
-                : "M8 5v14l11-7z"; 
+            const path = isAutoRotating ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z" : "M8 5v14l11-7z"; 
             btnAuto.querySelector('path').setAttribute('d', path);
-            if(isAutoRotating) btnAuto.classList.add('active');
-            else btnAuto.classList.remove('active');
+            btnAuto.classList.toggle('active', isAutoRotating);
         }
 
-        // --- 全屏控制逻辑 ---
         async function toggleFullscreen(forceEnter = false) {
             const docEl = document.documentElement;
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-
-            if (!isFullscreen || forceEnter === true) {
-                try {
-                    if (docEl.requestFullscreen) await docEl.requestFullscreen();
-                    else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
-                } catch(e) {}
+            if (!document.fullscreenElement || forceEnter) {
+                try { if (docEl.requestFullscreen) await docEl.requestFullscreen(); else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen(); } catch(e) {}
             } else {
-                try {
-                    if (document.exitFullscreen) await document.exitFullscreen();
-                    else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-                } catch(e) {}
+                try { if (document.exitFullscreen) await document.exitFullscreen(); else if (document.webkitExitFullscreen) await document.webkitExitFullscreen(); } catch(e) {}
             }
-            resetIdleTimer();
         }
         btnFullscreen.addEventListener('click', () => toggleFullscreen());
 
-        // --- 闲置检测逻辑 ---
         function resetIdleTimer() {
-            // 清除旧计时器
             clearTimeout(idleTimer);
-            // 恢复不透明
             hudControls.classList.remove('idle');
-
-            // 重新开始计时，2秒后变淡
             idleTimer = setTimeout(() => {
-                // 如果菜单是打开的，不要变淡
-                if (!galleryPanel.classList.contains('open')) {
-                    hudControls.classList.add('idle');
-                }
-            }, 2000);
+                if (!galleryPanel.classList.contains('open')) hudControls.classList.add('idle');
+            }, 3000);
         }
-
-        // 监听全局交互以重置闲置计时器
-        ['mousemove', 'touchstart', 'touchmove', 'click'].forEach(evt => 
-            document.addEventListener(evt, resetIdleTimer)
-        );
-
+        
         const handleResize = () => { if(viewer) viewer.resize(); };
         window.addEventListener('resize', handleResize);
-        document.addEventListener('fullscreenchange', handleResize);
 
     </script>
 </body>
