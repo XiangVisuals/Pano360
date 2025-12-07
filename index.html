@@ -42,27 +42,39 @@
             transition: transform 0.5s ease;
         }
 
-        /* 强制横屏的 CSS 类 (iOS兼容) */
-        @media screen and (orientation: portrait) {
+        /* --- 强制横屏逻辑 (核心修改) --- */
+        /* 仅在竖屏且屏幕较窄（手机）时生效 */
+        @media screen and (orientation: portrait) and (max-width: 900px) {
             body.force-landscape #main-container {
                 width: 100vh;
                 height: 100vw;
+                /* 核心旋转逻辑 */
                 transform: rotate(90deg);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
                 left: 100%; 
             }
-            body.force-landscape #toast-msg,
-            body.force-landscape #gallery-panel {
-                transform: rotate(90deg);
+            
+            /* 修正旋转后的弹窗位置 */
+            body.force-landscape #toast-msg {
                 position: fixed;
-            }
-            body.force-landscape #gallery-panel {
-                bottom: 50%;
+                top: 50%;
                 left: 50%;
-                transform: translate(-50%, 50%) rotate(90deg);
-                width: 80vh;
+                transform: translate(-50%, -50%) rotate(90deg);
+                /* 调整 Toast 在横屏模式下的位置，使其看起来在"顶部" */
+                margin-left: 40vh; 
+            }
+            
+            /* 修正旋转后的面板位置 */
+            body.force-landscape #gallery-panel {
+                bottom: auto;
+                left: auto;
+                top: 50%;
+                right: 20px; /* 视觉上的底部 */
+                transform: translateY(-50%) rotate(90deg);
+                width: 70vh;
+                max-height: 80vw;
             }
         }
 
@@ -96,13 +108,13 @@
             left: -5%;
             width: 110%;
             height: 110%;
-            background-color: #111; /* 加载前的默认底色 */
+            background-color: #111; 
             background-size: cover;
             background-position: center;
-            filter: blur(30px) brightness(0.7); /* 稍微降低亮度以突出前景 */
+            /* 增加模糊度，因为现在使用的是低清缩略图，模糊处理既美观又遮丑 */
+            filter: blur(40px) brightness(0.6); 
             z-index: -1;
             transition: opacity 1s ease-in-out; 
-            /* 性能优化：提示浏览器此元素会变化 */
             will-change: transform, opacity;
         }
 
@@ -126,7 +138,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* 初始状态稍微下移，配合JS做入场动画 */
             transform: translateY(20px);
             opacity: 0;
             animation: contentFadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -557,19 +568,17 @@
         const btnAuto = document.getElementById('btn-auto');
         const btnFullscreen = document.getElementById('btn-fullscreen');
 
-        // --- 优化核心 1: 首页背景使用 Bing 每日壁纸 ---
-        const BING_API_URL = "https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN";
-
+        // --- 优化核心 1: 移除 Bing 壁纸，使用本地缩略图 ---
+        // 优化思路：Bing 壁纸需要外部网络请求，且尺寸较大。
+        // 现在直接使用第一张全景图的"缩略图"作为背景。
+        // 配合 CSS 的 blur(40px) 滤镜，模糊的低清图效果很好，且加载极快。
         function loadLandingBackground() {
-            const img = new Image();
-            img.src = BING_API_URL;
-            img.onload = () => {
-                landingBg.style.backgroundImage = `url('${BING_API_URL}')`;
-                prefetchFirstScene();
-            };
-            img.onerror = () => {
-                landingBg.style.backgroundImage = `url('${SCENE_LIST[0].url}')`;
-            };
+            // 使用场景列表中的第一个缩略图
+            const bgUrl = SCENE_LIST[0].thumb;
+            landingBg.style.backgroundImage = `url('${bgUrl}')`;
+            
+            // 并行预加载全景大图，为进入 VR 做准备
+            prefetchFirstScene();
         }
         
         loadLandingBackground();
@@ -582,6 +591,25 @@
             document.head.appendChild(preloadLink);
             console.log("正在预加载 VR 场景资源...");
         }
+
+        // --- 优化核心 2: 首页也强制横屏逻辑 ---
+        function checkOrientation() {
+            // 简单判断：高度大于宽度即为竖屏
+            if (window.innerHeight > window.innerWidth) {
+                document.body.classList.add('force-landscape');
+            } else {
+                document.body.classList.remove('force-landscape');
+            }
+            if(viewer) viewer.resize();
+        }
+
+        // 立即执行一次检测
+        checkOrientation();
+        // 监听 resize 和 orientationchange
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', () => {
+             setTimeout(checkOrientation, 100); // 延时一点以确保宽高已更新
+        });
 
         // --- 渲染首页缩略图列表 ---
         function renderLandingGallery() {
@@ -602,6 +630,12 @@
         function selectSceneFromLanding(index) {
             currentSceneId = index;
             renderLandingGallery(); 
+            // 切换背景图 (可选，如果想让背景随选择变化)
+            landingBg.style.opacity = 0;
+            setTimeout(() => {
+                 landingBg.style.backgroundImage = `url('${SCENE_LIST[index].thumb}')`;
+                 landingBg.style.opacity = 1;
+            }, 200);
         }
 
         // --- 渲染 HUD 场景列表 (进入后) ---
@@ -649,12 +683,16 @@
             // 尝试进入全屏
             await toggleFullscreen(true);
 
+            // 尝试使用 API 锁定方向，如果失败则回退到 CSS 强制旋转
             try {
                 if (screen.orientation && screen.orientation.lock) {
                     await screen.orientation.lock('landscape');
+                    // 如果系统锁定成功，移除 CSS 强制旋转类，防止冲突
+                    document.body.classList.remove('force-landscape'); 
                 }
             } catch (e) {
-                document.body.classList.add('force-landscape');
+                // 锁定失败（如 iOS），保持 checkOrientation 的 CSS 逻辑
+                checkOrientation();
             }
 
             let permissionGranted = false;
@@ -876,12 +914,6 @@
         const handleResize = () => { if(viewer) viewer.resize(); };
         window.addEventListener('resize', handleResize);
         document.addEventListener('fullscreenchange', handleResize);
-        window.addEventListener("orientationchange", function() {
-            if (window.orientation === 90 || window.orientation === -90) {
-                document.body.classList.remove('force-landscape');
-            }
-            if(viewer) viewer.resize();
-        });
 
     </script>
 </body>
