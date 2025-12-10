@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>沉浸式全景体验</title>
+    <title>沉浸式全景体验 - 优化版</title>
     
     <!-- 性能优化：预连接 CDN -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -45,6 +45,8 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* 增加平滑过渡，避免旋转时的白色闪烁 */
+            background-color: #000;
         }
 
         /* 全景容器 */
@@ -52,7 +54,8 @@
             width: 100%;
             height: 100%;
             opacity: 0;
-            transition: opacity 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+            /* 优化透明度过渡，使其更自然 */
+            transition: opacity 1.0s ease-out;
         }
 
         /* --- 启动页 (Landing Page) --- */
@@ -660,7 +663,7 @@
                 "showZoomCtrl": false,
                 "mouseZoom": false,
                 "showControls": false,
-                "hfov": 100,
+                "hfov": 100, // 初始水平视场角
                 "autoRotate": -2,
                 "autoRotateInactivityDelay": 3000,
                 "crossOrigin": "anonymous"
@@ -763,26 +766,11 @@
                 try { 
                     if (docEl.requestFullscreen) await docEl.requestFullscreen(); 
                     else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen(); 
-                    
-                    // 尝试自动锁定横屏 (Screen Orientation API)
-                    if (forceEnter && screen.orientation && screen.orientation.lock) {
-                        try {
-                            // 大部分浏览器要求全屏下才能锁定
-                            await screen.orientation.lock('landscape');
-                        } catch (err) {
-                            console.log("Auto landscape lock failed or not supported:", err);
-                        }
-                    }
                 } catch(e) {}
             } else {
                 try { 
                     if (document.exitFullscreen) await document.exitFullscreen(); 
                     else if (document.webkitExitFullscreen) await document.webkitExitFullscreen(); 
-                    
-                    // 退出全屏后尝试解锁方向
-                    if (screen.orientation && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                    }
                 } catch(e) {}
             }
         }
@@ -795,12 +783,53 @@
                 if (!galleryPanel.classList.contains('open')) hudControls.classList.add('idle');
             }, 3000);
         }
-        
-        const handleResize = () => { 
+
+        /* * =========================================================================
+         * 核心优化：平滑的横竖屏切换与陀螺仪修正逻辑
+         * =========================================================================
+         */
+
+        // 1. 处理窗口大小变化（包括软键盘弹出、浏览器地址栏伸缩）
+        window.addEventListener('resize', () => { 
             if(viewer) viewer.resize();
-            checkOrientation(); // 重新检查方向
-        };
-        window.addEventListener('resize', handleResize);
+            // 不在此处重启陀螺仪，避免因为细微尺寸变化导致的抖动
+            checkOrientation(); 
+        });
+
+        // 2. 专门监听屏幕旋转事件 (Orientation Change)
+        // 这是解决"异常现象"的关键：在旋转完成后，强制校准陀螺仪
+        window.addEventListener('orientationchange', () => {
+            if(!viewer) return;
+
+            // 临时暂停自动旋转，防止冲突
+            if(isAutoRotating) viewer.stopAutoRotate();
+
+            // 延迟 300ms 等待浏览器布局和 screen.orientation 属性完全更新
+            setTimeout(() => {
+                viewer.resize();
+                
+                // 如果当前开启了陀螺仪，执行“软重启”以修正坐标系
+                if (isGyroEnabled) {
+                    // 步骤A: 停止陀螺仪（断开旧的坐标映射）
+                    viewer.stopOrientation();
+                    
+                    // 步骤B: 短暂延迟后重新开启（获取新的屏幕方向映射）
+                    setTimeout(() => {
+                        viewer.startOrientation();
+                        // 恢复自动旋转状态（如果之前是开启的）
+                        if(isAutoRotating) viewer.startAutoRotate(-2);
+                    }, 100);
+                } else {
+                    if(isAutoRotating) viewer.startAutoRotate(-2);
+                }
+                
+                // 可选：根据屏幕比例动态调整 HFOV 以获得更好的视觉效果
+                // 竖屏时视野稍微收窄一点，避免拉伸过大；横屏更广阔
+                const isPortrait = window.innerHeight > window.innerWidth;
+                viewer.setHfov(isPortrait ? 80 : 100);
+
+            }, 300); 
+        });
 
         // --- 自动横屏提示逻辑 (显示1.5秒后关闭) ---
         let lastStateWasPortrait = false;
@@ -813,11 +842,7 @@
                 // 如果是刚进入竖屏模式（或初始化时），显示提示
                 if (!lastStateWasPortrait) {
                     overlay.classList.add('show');
-                    
-                    // 清除之前的定时器
                     if (window.orientationTimer) clearTimeout(window.orientationTimer);
-                    
-                    // 1.5秒后自动关闭
                     window.orientationTimer = setTimeout(() => {
                         overlay.classList.remove('show');
                     }, 1500);
@@ -827,7 +852,6 @@
                 overlay.classList.remove('show');
                 if (window.orientationTimer) clearTimeout(window.orientationTimer);
             }
-            
             lastStateWasPortrait = isPortrait;
         }
         
