@@ -539,7 +539,7 @@
         let isAutoRotating = false;
         let isGyroEnabled = false;
         let idleTimer;
-        let loadingStartTime = 0; // 记录开始加载的时间，用于控制最小 Loading 时长
+        let loadingStartTime = 0; 
 
         const startBtn = document.getElementById('startBtn');
         const landingPage = document.getElementById('landing-page');
@@ -565,7 +565,6 @@
         }
         loadLandingBackground();
 
-        // 渲染首页列表
         function renderLandingGallery() {
             landingGallery.innerHTML = '';
             SCENE_LIST.forEach((scene, index) => {
@@ -586,7 +585,6 @@
         }
         renderLandingGallery();
 
-        // 渲染 HUD 列表
         function renderHUDGallery() {
             galleryListContainer.innerHTML = '';
             SCENE_LIST.forEach((scene, index) => {
@@ -607,7 +605,6 @@
             toggleGalleryPanel(); 
             renderHUDGallery(); 
             
-            // 开始 Loading 计时
             loadingStartTime = Date.now();
             loader.style.display = 'block';
             document.getElementById('panorama').style.opacity = '0.5';
@@ -616,25 +613,20 @@
         }
 
         startBtn.addEventListener('click', async () => {
-            // 点击进入，先尝试全屏并尝试锁定横屏
             await toggleFullscreen(true);
 
-            // 淡出 UI
             startBtn.style.opacity = '0';
-            landingGallery.parentElement.style.opacity = '0'; // 隐藏整个 footer row
+            landingGallery.parentElement.style.opacity = '0'; 
             document.querySelector('.subtitle').style.opacity = '0';
             document.querySelector('h1').innerText = "VR 环境载入中...";
             
-            // 开始 Loading 计时
             loadingStartTime = Date.now();
             loader.style.display = 'block';
 
-            // 检查 Pannellum 加载
             if (typeof pannellum === 'undefined') {
                 await new Promise(r => setTimeout(r, 1000)); 
             }
 
-            // 请求陀螺仪权限
             let permissionGranted = false;
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
@@ -648,6 +640,13 @@
             setTimeout(() => initPannellum(permissionGranted), 500);
         });
 
+        // 获取当前建议的 HFOV（视场角）
+        // 竖屏时减小视场角，避免画面畸变
+        function getOptimalHfov() {
+            const isPortrait = window.innerHeight > window.innerWidth;
+            return isPortrait ? 60 : 100;
+        }
+
         function initPannellum(enableGyroInit) {
             const scene = SCENE_LIST[currentSceneId];
             if (viewer) { try { viewer.destroy(); } catch(e) {} }
@@ -660,7 +659,7 @@
                 "showZoomCtrl": false,
                 "mouseZoom": false,
                 "showControls": false,
-                "hfov": 100,
+                "hfov": getOptimalHfov(), // 使用动态计算的视场角
                 "autoRotate": -2,
                 "autoRotateInactivityDelay": 3000,
                 "crossOrigin": "anonymous"
@@ -677,8 +676,7 @@
             });
 
             viewer.on('load', () => {
-                // 计算剩余需要等待的时间，确保至少显示 1.5 秒
-                const minLoadTime = 1500; // 1.5秒
+                const minLoadTime = 1500; 
                 const elapsed = Date.now() - loadingStartTime;
                 const remainingTime = Math.max(0, minLoadTime - elapsed);
 
@@ -707,7 +705,6 @@
             }));
         }
 
-        // 交互逻辑
         function toggleGalleryPanel() {
             galleryPanel.classList.toggle('open');
             document.getElementById('btn-gallery').classList.toggle('active');
@@ -764,13 +761,11 @@
                     if (docEl.requestFullscreen) await docEl.requestFullscreen(); 
                     else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen(); 
                     
-                    // 尝试自动锁定横屏 (Screen Orientation API)
                     if (forceEnter && screen.orientation && screen.orientation.lock) {
                         try {
-                            // 大部分浏览器要求全屏下才能锁定
                             await screen.orientation.lock('landscape');
                         } catch (err) {
-                            console.log("Auto landscape lock failed or not supported:", err);
+                            console.log("Auto landscape lock failed:", err);
                         }
                     }
                 } catch(e) {}
@@ -779,7 +774,6 @@
                     if (document.exitFullscreen) await document.exitFullscreen(); 
                     else if (document.webkitExitFullscreen) await document.webkitExitFullscreen(); 
                     
-                    // 退出全屏后尝试解锁方向
                     if (screen.orientation && screen.orientation.unlock) {
                         screen.orientation.unlock();
                     }
@@ -796,34 +790,51 @@
             }, 3000);
         }
         
+        // --- 修复版 Resize 逻辑 ---
+        let resizeTimeout;
         const handleResize = () => { 
-            if(viewer) viewer.resize();
-            checkOrientation(); // 重新检查方向
+            // 防抖：等待 UI/地址栏动画结束
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if(viewer) {
+                    // 1. 更新尺寸
+                    viewer.resize();
+                    
+                    // 2. 根据横竖屏修正视场角 (解决画面异常/畸变)
+                    const newHfov = getOptimalHfov();
+                    viewer.setHfov(newHfov);
+
+                    // 3. 关键修复：如果开启了体感，旋转后需要重启体感以修正坐标轴 (解决体感错乱)
+                    if (isGyroEnabled) {
+                        // 临时关闭自动旋转以避免冲突
+                        viewer.stopAutoRotate();
+                        // 重启体感模块
+                        viewer.stopOrientation();
+                        setTimeout(() => {
+                            viewer.startOrientation();
+                        }, 50); // 微小延迟确保坐标系重置
+                    }
+                }
+                checkOrientation(); 
+            }, 200); // 200ms 延迟等待浏览器布局稳定
         };
         window.addEventListener('resize', handleResize);
 
-        // --- 自动横屏提示逻辑 (显示1.5秒后关闭) ---
         let lastStateWasPortrait = false;
         function checkOrientation() {
-            // 检查是否为移动端竖屏
-            const isPortrait = window.matchMedia("(orientation: portrait) and (max-width: 900px)").matches;
+            // 放宽检测标准，仅提示，不强制锁定交互
+            const isPortrait = window.matchMedia("(orientation: portrait)").matches;
             const overlay = document.getElementById('orientation-overlay');
 
             if (isPortrait) {
-                // 如果是刚进入竖屏模式（或初始化时），显示提示
                 if (!lastStateWasPortrait) {
                     overlay.classList.add('show');
-                    
-                    // 清除之前的定时器
                     if (window.orientationTimer) clearTimeout(window.orientationTimer);
-                    
-                    // 1.5秒后自动关闭
                     window.orientationTimer = setTimeout(() => {
                         overlay.classList.remove('show');
                     }, 1500);
                 }
             } else {
-                // 如果变成了横屏，立即隐藏
                 overlay.classList.remove('show');
                 if (window.orientationTimer) clearTimeout(window.orientationTimer);
             }
@@ -831,7 +842,6 @@
             lastStateWasPortrait = isPortrait;
         }
         
-        // 初始化运行一次
         checkOrientation();
 
     </script>
