@@ -11,12 +11,13 @@
     
     <title>沉浸式全景体验 | 视觉漫游</title>
     
-    <!-- 引入高级无衬线字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
     
-    <!-- 仅引入最基础的稳定版 Three.js -->
+    <!-- 性能优化：提前解析并建立外链连接 -->
+    <link rel="dns-prefetch" href="https://cllli.oss-cn-beijing.aliyuncs.com">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <style>
@@ -26,8 +27,8 @@
             --text-muted: rgba(255, 255, 255, 0.4);
             --glass-bg: rgba(5, 5, 5, 0.65);
             --glass-border: rgba(255, 255, 255, 0.15);
-            --transition-smooth: 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-            --transition-fast: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-smooth: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-fast: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         body, html {
@@ -38,76 +39,89 @@
             letter-spacing: 1px;
         }
 
-        /* 原生 WebGL 容器 */
+        /* --- 1. 全局初始加载屏 (Splash Screen) --- */
+        #global-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
+            background: #000000; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 1.2s var(--transition-smooth), visibility 1.2s;
+        }
+        #global-loader.hidden {
+            opacity: 0; visibility: hidden;
+        }
+        .global-brand {
+            font-size: 14px; font-weight: 200; letter-spacing: 12px; color: #fff;
+            text-transform: uppercase;
+            opacity: 0.5;
+            transform: scale(0.95);
+            animation: pulseBrand 2s infinite alternate ease-in-out;
+            transition: transform 2s ease-out, opacity 1s ease;
+        }
+        #global-loader.hidden .global-brand {
+            transform: scale(1.05); /* 隐藏时带有轻微的推入感 */
+            opacity: 0;
+        }
+        @keyframes pulseBrand {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.8; }
+        }
+
         #webgl-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+            will-change: transform; 
         }
 
-        /* 场景过渡黑幕 */
         #scene-transition {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 5; opacity: 1; transition: opacity 1.5s ease-in-out;
+            background: #000; z-index: 5; opacity: 1; transition: opacity 1.2s ease-out;
             pointer-events: none;
+            will-change: opacity;
         }
 
-        /* --- 极简启动页 --- */
         #landing-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100dvh;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; transition: opacity 1.2s ease, backdrop-filter 1.2s ease;
-            background: rgba(0,0,0,0.3); /* 压暗整体背景 */
+            z-index: 100; transition: opacity 0.8s ease, backdrop-filter 0.8s ease;
+            background: rgba(0,0,0,0.3); 
+            will-change: opacity, backdrop-filter;
         }
+        
         .landing-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover; background-position: center;
             filter: blur(40px) brightness(0.3) grayscale(50%);
-            transform: scale(1.1); z-index: -1; transition: opacity 1s ease-in-out; 
+            transform: scale(1.1); z-index: -1; transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out; 
+            will-change: opacity;
         }
+        
         .landing-content {
             display: flex; flex-direction: column; align-items: center;
             transform: translateY(15px); opacity: 0;
-            animation: contentFadeIn 2s var(--transition-smooth) forwards;
-            animation-delay: 0.2s; width: 100%; max-width: 1200px;
+            animation: contentFadeIn 1.5s var(--transition-smooth) forwards;
+            animation-delay: 0.1s; width: 100%; max-width: 1200px;
+            will-change: transform, opacity;
         }
         @keyframes contentFadeIn { to { transform: translateY(0); opacity: 1; } }
 
         h1 { font-size: 32px; font-weight: 200; margin: 0 0 8px 0; letter-spacing: 8px; text-transform: uppercase; text-align: center;}
         p.subtitle { font-size: 11px; font-weight: 300; color: var(--text-muted); margin-bottom: 40px; letter-spacing: 4px; text-transform: uppercase; text-align: center;}
 
-        /* 画廊 (全新换行网格布局 + 垂直滚动) */
         .landing-gallery-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0; }
         
         .landing-gallery {
-            display: flex; 
-            flex-wrap: wrap; /* 允许换行 */
-            gap: 20px; 
-            width: 100%; 
-            max-width: 1050px; 
-            max-height: 50vh; /* 限制最大高度，防止溢出屏幕 */
-            padding: 20px; 
-            box-sizing: border-box;
-            overflow-y: auto; /* 超出则垂直滚动 */
-            overflow-x: hidden;
-            justify-content: center;
-            align-content: flex-start; /* 多行内容靠上对齐 */
+            display: flex; flex-wrap: wrap; gap: 20px; 
+            width: 100%; max-width: 1050px; max-height: 50vh; 
+            padding: 20px; box-sizing: border-box;
+            overflow-y: auto; overflow-x: hidden;
+            justify-content: center; align-content: flex-start; 
+            -webkit-overflow-scrolling: touch; 
+            will-change: transform;
         }
         
-        /* 极简高级垂直滚动条 */
-        .landing-gallery::-webkit-scrollbar {
-            width: 4px;
-            display: block; /* 唤出滚动条 */
-        }
-        .landing-gallery::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 4px;
-        }
-        .landing-gallery::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-        .landing-gallery::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
+        .landing-gallery::-webkit-scrollbar { width: 4px; display: block; }
+        .landing-gallery::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
+        .landing-gallery::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+        .landing-gallery::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
 
         @media (max-width: 900px) {
             h1 { font-size: 24px; letter-spacing: 6px; }
@@ -115,24 +129,24 @@
         }
         
         .thumb-item {
-            flex: 0 0 240px; height: 135px; border-radius: 0; /* 锋利直角 */
+            flex: 0 0 240px; height: 135px; border-radius: 0; 
             overflow: hidden; position: relative; cursor: pointer; 
-            transition: var(--transition-smooth); 
+            transition: var(--transition-fast); 
             opacity: 0.4; filter: grayscale(100%);
             border: 1px solid transparent; box-sizing: border-box;
+            will-change: opacity, filter;
+            transform: translateZ(0); 
         }
         @media (max-width: 600px) {
-            /* 手机端适当缩放以在一排显示两个 */
             .thumb-item { flex: 0 0 150px; height: 85px; }
         }
 
-        .thumb-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-smooth); }
+        .thumb-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-fast); }
         .thumb-item:hover { opacity: 0.7; filter: grayscale(50%); }
         .thumb-item.active { 
             opacity: 1; filter: grayscale(0%); 
-            border: 1px solid rgba(255,255,255,0.7); /* 极简白框 */
+            border: 1px solid rgba(255,255,255,0.7); 
         }
-        /* 缓慢缩放图片内容，而不是外框跳动 */
         .thumb-item.active img { transform: scale(1.05); }
 
         .thumb-item .item-title {
@@ -146,28 +160,26 @@
         .start-btn {
             margin-top: 30px; background: transparent; border: 1px solid rgba(255,255,255,0.2);
             color: white; padding: 0 50px; height: 46px; font-size: 11px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase;
-            border-radius: 0; /* 锋利直角 */
-            cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-radius: 0; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             display: inline-flex; align-items: center; justify-content: center; gap: 12px; transition: var(--transition-fast);
             flex-shrink: 0;
         }
         .start-btn:hover { background: #fff; color: #000; border-color: #fff; }
-        .start-btn:active { opacity: 0.7; }
+        .start-btn:active { opacity: 0.7; transform: scale(0.98); }
 
-        /* HUD 控制栏 */
         #hud-controls {
             position: absolute; bottom: max(30px, env(safe-area-inset-bottom) + 15px);
             left: 50%; transform: translateX(-50%) translateY(100px);
             display: flex; gap: 8px; padding: 6px 12px;
             background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border); border-radius: 0; /* 锋利直角 */
+            border: 1px solid var(--glass-border); border-radius: 0; 
             z-index: 20; transition: var(--transition-smooth); opacity: 0; pointer-events: none;
+            will-change: transform, opacity;
         }
         #hud-controls.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
         #hud-controls.idle { opacity: 0; transform: translateX(-50%) translateY(20px); pointer-events: none; }
         
-        /* 交互区域检测以取消隐藏 */
-        #interaction-layer { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 10; }
+        #interaction-layer { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
 
         .hud-btn {
             width: 36px; height: 36px; border-radius: 0; background: transparent; border: none;
@@ -180,7 +192,6 @@
         .hud-btn.active svg { stroke: #000; }
         .divider { width: 1px; height: 18px; background: var(--glass-border); margin: auto 5px; }
 
-        /* 画廊面板 (VR内部小图依然保持水平滚动) */
         #gallery-panel {
             position: absolute; bottom: max(80px, env(safe-area-inset-bottom) + 65px);
             left: 50%; transform: translateX(-50%) translateY(20px);
@@ -188,6 +199,7 @@
             background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border); border-radius: 0;
             transition: var(--transition-fast); z-index: 15; padding: 12px; display: flex; gap: 12px; overflow-x: auto;
+            will-change: transform, opacity; -webkit-overflow-scrolling: touch;
         }
         #gallery-panel.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
         #gallery-panel::-webkit-scrollbar { display: none; }
@@ -195,9 +207,9 @@
         .hud-scene-item {
             width: 100px; height: 56px; border-radius: 0; overflow: hidden; position: relative;
             cursor: pointer; filter: grayscale(100%); opacity: 0.5; transition: var(--transition-fast); flex-shrink: 0;
-            border: 1px solid transparent; box-sizing: border-box;
+            border: 1px solid transparent; box-sizing: border-box; transform: translateZ(0);
         }
-        .hud-scene-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-smooth); }
+        .hud-scene-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-fast); }
         .hud-scene-item.active, .hud-scene-item:hover { filter: grayscale(0%); opacity: 1; }
         .hud-scene-item.active { border: 1px solid rgba(255,255,255,0.5); }
         .hud-scene-item.active img { transform: scale(1.1); }
@@ -207,38 +219,48 @@
             text-transform: uppercase;
         }
 
-        /* 优雅的 Loading */
+        /* --- 2. 场景切换真实进度条 Loading --- */
         .loader-wrapper {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 50; flex-direction: column; align-items: center; gap: 20px;
+            z-index: 50; flex-direction: column; align-items: center; gap: 15px;
         }
-        .line-spinner { width: 60px; height: 1px; background: rgba(255,255,255,0.1); position: relative; overflow: hidden; }
-        .line-spinner::after {
-            content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%;
-            background: #fff; animation: lineLoad 1.5s infinite ease-in-out;
+        .loader-title {
+            font-size: 10px; font-weight: 300; color: rgba(255,255,255,0.6); 
+            letter-spacing: 4px; text-transform: uppercase;
         }
-        @keyframes lineLoad { 0% { left: -50%; } 100% { left: 100%; } }
+        .progress-bar-container {
+            width: 160px; height: 1px; background: rgba(255,255,255,0.15); 
+            position: relative; overflow: hidden;
+        }
+        .progress-bar-fill {
+            position: absolute; top: 0; left: 0; height: 100%; width: 0%; 
+            background: #fff; transition: width 0.2s ease-out;
+        }
+        .progress-text { 
+            font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.8); 
+            letter-spacing: 2px; font-variant-numeric: tabular-nums;
+        }
 
-        /* 高级 Toast */
         #toast-msg {
             position: absolute; top: max(40px, env(safe-area-inset-top) + 20px); left: 50%;
             transform: translateX(-50%) translateY(-20px); color: #fff; font-size: 10px; font-weight: 300; letter-spacing: 4px;
-            text-transform: uppercase; opacity: 0; transition: var(--transition-smooth);
-            z-index: 200; pointer-events: none; 
+            text-transform: uppercase; opacity: 0; transition: var(--transition-fast);
+            z-index: 200; pointer-events: none; will-change: transform, opacity;
         }
         #toast-msg.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        
-        .progress-text { font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.6); letter-spacing: 2px; font-variant-numeric: tabular-nums;}
 
     </style>
 </head>
 <body>
 
-    <!-- 原生 WebGL 容器 -->
+    <!-- 全局初始加载动画 -->
+    <div id="global-loader">
+        <div class="global-brand">VISUALS SPACE</div>
+    </div>
+
     <div id="webgl-container"></div>
     <div id="scene-transition"></div>
     
-    <!-- 专门用于捕获手势交互的透明层 -->
     <div id="interaction-layer"></div>
 
     <div id="landing-page">
@@ -256,13 +278,15 @@
         </div>
     </div>
     
+    <!-- 场景切换真实进度条加载动画 -->
     <div class="loader-wrapper" id="loader">
-        <div class="line-spinner"></div>
-        <div style="font-size:9px; font-weight:300; color:rgba(255,255,255,0.4); letter-spacing:4px; text-transform:uppercase;">Loading Environment</div>
+        <div class="loader-title">Loading Environment</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
         <div class="progress-text" id="load-progress">0%</div>
     </div>
 
-    <!-- HUD 控制栏 -->
     <div id="hud-controls">
         <button class="hud-btn" id="btn-gallery" title="Scenes">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -284,7 +308,6 @@
     <div id="toast-msg"><span id="toast-text"></span></div>
 
     <script>
-        // --- 全景图数据源 (仅保留 5 个精选稳定的 Demo 场景) ---
         const SCENE_LIST = [
             { id: 0, name: "Donggang", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P1.jpg" },
             { id: 1, name: "Concept", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P4.jpg" },
@@ -293,13 +316,20 @@
             { id: 4, name: "Alma", url: "https://pannellum.org/images/alma.jpg" }
         ];
 
-        // --- 核心变量 ---
+        // 获取优化后的图片 URL
+        function getOptimizedUrl(url, isThumb = false) {
+            if (url.includes('aliyuncs.com')) {
+                if (isThumb) return url + "?x-oss-process=image/resize,w_400/quality,q_80";
+                return url + "?x-oss-process=image/quality,q_90";
+            }
+            return url;
+        }
+
         let currentSceneId = 0;
         let isVRActive = false;
         
         let scene, camera, renderer, material, textureLoader;
         
-        // 视角与动画参数：初始配置为正视前方的大广角
         let lon = 0, lat = 0, fov = 140; 
         let targetLon = 0, targetLat = 0, targetFov = 140;
         
@@ -313,12 +343,16 @@
         let isPlanetMode = false;
         let idleTimer;
 
+        let preloadedFirstTexture = null;
+
         const els = {
+            globalLoader: document.getElementById('global-loader'),
             startBtn: document.getElementById('startBtn'),
             landing: document.getElementById('landing-page'),
             landingBg: document.getElementById('landing-bg'),
             landingGallery: document.getElementById('landing-gallery'),
             loader: document.getElementById('loader'),
+            progressFill: document.getElementById('progress-fill'),
             progressText: document.getElementById('load-progress'),
             hud: document.getElementById('hud-controls'),
             galleryPanel: document.getElementById('gallery-panel'),
@@ -331,8 +365,28 @@
 
         // --- 初始化基础 UI ---
         function initUI() {
-            els.landingBg.style.backgroundImage = `url('${SCENE_LIST[0].url}')`;
+            els.landingBg.style.backgroundImage = `url('${getOptimizedUrl(SCENE_LIST[0].url, true)}')`;
             renderGalleries();
+
+            // 当窗口资源加载完成后，隐藏全局启动屏
+            window.onload = () => {
+                setTimeout(() => {
+                    els.globalLoader.classList.add('hidden');
+                }, 800); // 稍微延迟展示品牌感
+            };
+
+            // 后台静默下载第一张高清图
+            setTimeout(() => {
+                const tempLoader = new THREE.TextureLoader();
+                tempLoader.setCrossOrigin('anonymous');
+                tempLoader.load(getOptimizedUrl(SCENE_LIST[0].url, false), (texture) => {
+                    texture.generateMipmaps = false;
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+                    texture.wrapS = THREE.RepeatWrapping;
+                    preloadedFirstTexture = texture; 
+                });
+            }, 500); 
         }
 
         function renderGalleries() {
@@ -342,7 +396,7 @@
                     lItem.className = `thumb-item ${index === currentSceneId ? 'active' : ''}`;
                     lItem.addEventListener('click', () => updateLandingSelection(index));
                     lItem.innerHTML = `
-                        <img src="${sceneData.url}" loading="lazy">
+                        <img src="${getOptimizedUrl(sceneData.url, true)}" loading="lazy">
                         <div class="item-title">${sceneData.name}</div>
                     `;
                     els.landingGallery.appendChild(lItem);
@@ -350,7 +404,7 @@
                     const hItem = document.createElement('div');
                     hItem.className = `hud-scene-item ${index === currentSceneId ? 'active' : ''}`;
                     hItem.addEventListener('click', () => switchVRScene(index));
-                    hItem.innerHTML = `<img src="${sceneData.url}" loading="lazy"><div class="title">${sceneData.name}</div>`;
+                    hItem.innerHTML = `<img src="${getOptimizedUrl(sceneData.url, true)}" loading="lazy"><div class="title">${sceneData.name}</div>`;
                     els.galleryPanel.appendChild(hItem);
                 });
             } else {
@@ -365,7 +419,7 @@
             renderGalleries();
             els.landingBg.style.opacity = 0;
             setTimeout(() => {
-                 els.landingBg.style.backgroundImage = `url('${SCENE_LIST[index].url}')`;
+                 els.landingBg.style.backgroundImage = `url('${getOptimizedUrl(SCENE_LIST[index].url, true)}')`;
                  els.landingBg.style.opacity = 1;
             }, 300);
         }
@@ -373,10 +427,9 @@
         function showToast(text) {
             els.toastText.innerText = text;
             els.toast.classList.add('show');
-            setTimeout(() => els.toast.classList.remove('show'), 3000);
+            setTimeout(() => els.toast.classList.remove('show'), 2500);
         }
 
-        // --- 核心：数学级完美无缝畸变的 GLSL Shader ---
         function initThreeJS() {
             scene = new THREE.Scene();
             camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -425,7 +478,6 @@
                         pUv.x *= uAspect;
 
                         float R = length(pUv);
-                        
                         float param = 1.0 + uPlanet; 
 
                         float theta = 0.0;
@@ -457,7 +509,7 @@
             const mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
             els.webglContainer.appendChild(renderer.domElement);
@@ -470,49 +522,64 @@
             window.addEventListener('resize', onWindowResize);
         }
 
+        // 处理从贴图应用到 UI 过渡的逻辑
+        function applyTextureAndTransition(texture, sceneName, isFirstLoad) {
+            material.uniforms.tEquirect.value = texture;
+
+            setTimeout(() => {
+                els.loader.style.display = 'none';
+                els.transitionBox.style.opacity = '0'; 
+                
+                if (isFirstLoad) {
+                    els.landing.style.opacity = '0';
+                    els.landing.style.pointerEvents = 'none';
+                    els.hud.classList.add('visible');
+                    
+                    // 加快电影级缓推入开场
+                    setTimeout(() => {
+                        targetLat = 0;
+                        targetPlanetEffect = 0.0;
+                        targetFov = window.innerWidth / window.innerHeight < 1 ? 95 : 75;
+                        isAutoRotating = true; 
+                        document.getElementById('btn-auto').classList.add('active');
+                        document.getElementById('btn-auto').innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+                    }, 200); 
+                }
+                
+                showToast(sceneName);
+                resetIdleTimer();
+            }, 100);
+        }
+
         function loadPanorama(url, isFirstLoad = false) {
+            const sceneName = SCENE_LIST[currentSceneId].name;
+            
+            if (isFirstLoad && currentSceneId === 0 && preloadedFirstTexture) {
+                applyTextureAndTransition(preloadedFirstTexture, sceneName, true);
+                return;
+            }
+
+            // 显示并重置进度条
             els.loader.style.display = 'flex';
             els.progressText.innerText = "0%";
+            els.progressFill.style.width = "0%";
             els.transitionBox.style.opacity = '1'; 
 
             textureLoader.load(
-                url,
+                getOptimizedUrl(url, false),
                 (texture) => {
                     texture.generateMipmaps = false;
                     texture.minFilter = THREE.LinearFilter;
                     texture.magFilter = THREE.LinearFilter;
                     texture.wrapS = THREE.RepeatWrapping;
                     
-                    material.uniforms.tEquirect.value = texture;
-
-                    setTimeout(() => {
-                        els.loader.style.display = 'none';
-                        els.transitionBox.style.opacity = '0'; 
-                        
-                        if (isFirstLoad) {
-                            els.landing.style.opacity = '0';
-                            setTimeout(() => els.landing.style.display = 'none', 1200);
-                            els.hud.classList.add('visible');
-                            
-                            // 电影级缓推入开场 (Cinematic Push-in)
-                            setTimeout(() => {
-                                targetLat = 0;
-                                targetPlanetEffect = 0.0;
-                                targetFov = window.innerWidth / window.innerHeight < 1 ? 95 : 75;
-                                isAutoRotating = true; 
-                                document.getElementById('btn-auto').classList.add('active');
-                                document.getElementById('btn-auto').innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-                            }, 400); 
-                        }
-                        
-                        showToast(SCENE_LIST[currentSceneId].name);
-                        resetIdleTimer();
-                    }, 200);
+                    applyTextureAndTransition(texture, sceneName, isFirstLoad);
                 },
                 (xhr) => {
                     if (xhr.lengthComputable) {
                         const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
                         els.progressText.innerText = percentComplete + '%';
+                        els.progressFill.style.width = percentComplete + '%'; // 实时更新实体进度条
                     }
                 },
                 (err) => {
@@ -562,7 +629,7 @@
 
         function onPointerMove(event) {
             if (isUserInteracting) {
-                const sensitivity = (fov / 75) * 0.1;
+                const sensitivity = (fov / 75) * 0.12;
                 targetLon = (onPointerDownPointerX - event.clientX) * sensitivity + onPointerDownLon;
                 targetLat = (event.clientY - onPointerDownPointerY) * sensitivity + onPointerDownLat;
                 resetIdleTimer();
@@ -579,7 +646,7 @@
             if(!isPlanetMode) {
                 targetFov = aspect < 1 ? 95 : 75; 
             } else {
-                targetFov = aspect < 1 ? 300 : 260; // 窗口改变时动态调整星球模式FOV
+                targetFov = aspect < 1 ? 300 : 260; 
             }
         }
 
@@ -593,10 +660,10 @@
 
             targetLat = Math.max(-90, Math.min(90, targetLat));
 
-            lon += (targetLon - lon) * 0.05;
-            lat += (targetLat - lat) * 0.05;
-            fov += (targetFov - fov) * 0.04;
-            planetEffect += (targetPlanetEffect - planetEffect) * 0.04;
+            lon += (targetLon - lon) * 0.1; 
+            lat += (targetLat - lat) * 0.1;
+            fov += (targetFov - fov) * 0.05;
+            planetEffect += (targetPlanetEffect - planetEffect) * 0.05;
 
             material.uniforms.uFov.value = THREE.MathUtils.degToRad(fov);
             material.uniforms.uRotation.value.set(
@@ -642,7 +709,6 @@
             if (isPlanetMode) {
                 targetPlanetEffect = 1.0; 
                 targetLat = -90;          
-                // 移动端 (竖屏) 拉远 FOV 至 300，桌面端保持 260，以保证星球完整显示
                 targetFov = aspect < 1 ? 300 : 260;          
                 if(!isAutoRotating) document.getElementById('btn-auto').click(); 
                 showToast("PLANET MODE");
