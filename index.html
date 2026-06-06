@@ -1,791 +1,499 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
+```react
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, UploadCloud, Video, Clock, AlignLeft, Mic, ImagePlus, Download, Import, Check, Trash2, Edit3, Save, X } from 'lucide-react';
+
+// 初始细化脚本数据（23个精准分镜）
+const INITIAL_SHOTS = [
+  {
+    id: 'shot-1',
+    time: '00:00 - 00:05',
+    scene: '城市取景',
+    shotType: '远景 -> 推镜头',
+    visual: '清晨大连城市空镜。从星海湾或滨海路的远景缓缓推进，晨曦柔和，海面波光粼粼，车流与城市苏醒的画面温柔过渡。',
+    subtitle: '',
+    vo: '山海相拥，匠心扎根滨城。',
+    image: null
+  },
+  {
+    id: 'shot-2',
+    time: '00:05 - 00:10',
+    scene: '品牌亮相',
+    shotType: '全景 -> 摇镜头',
+    visual: '视线平滑过渡至繁华的大连恒隆广场外立面，镜头缓缓上移，定格在商场主楼在晨光中的高级质感。',
+    subtitle: '',
+    vo: '在大连，藏着一份坚守十年的手工温柔，',
+    image: null
+  },
+  {
+    id: 'shot-3',
+    time: '00:10 - 00:15',
+    scene: '品牌亮相',
+    shotType: '中景 -> 特写',
+    visual: '画面推拉至 EIKI 门店精致的门头特写。门店内透出柔和通透的暖光，招牌细节干净、高级。',
+    subtitle: 'EIKI in TOKYO・大连恒隆 3 层 331',
+    vo: '它叫 EIKI。',
+    image: null
+  },
+  {
+    id: 'shot-4',
+    time: '00:16 - 00:22',
+    scene: '十年沉淀',
+    shotType: '全景 -> 慢推',
+    visual: '镜头切入门店内部，暖调的室内光影（原木与皮革色调）铺开。主理人静坐工作台前，给一个安静温柔的侧影。',
+    subtitle: '',
+    vo: '快节奏的时代，万物追求速成，而我们选择慢下来。',
+    image: null
+  },
+  {
+    id: 'shot-5',
+    time: '00:22 - 00:28',
+    scene: '十年沉淀',
+    shotType: '特写 -> 平移',
+    visual: '镜头缓缓扫过复古质感的十年老店成长照片墙，随后平移至挂满岁月痕迹的手工工具墙，展现时光积淀。',
+    subtitle: '十年如一・坚守手工温度',
+    vo: '十年深耕手工皮具领域，摒弃流水线的冰冷复制，',
+    image: null
+  },
+  {
+    id: 'shot-6',
+    time: '00:28 - 00:40',
+    scene: '初心坚守',
+    shotType: '特写 -> 升格(慢动作)',
+    visual: '主理人抬手轻抚工作台上的皮革面料，指尖慢慢摩挲皮面纹理。动作极度轻柔，微距捕捉指尖与皮革的互动。',
+    subtitle: '',
+    vo: '始终相信，双手的温度，才能赋予皮革独一无二的生命力。十年初心不改，只为做好每一件手作皮具。',
+    image: null
+  },
+  {
+    id: 'shot-7',
+    time: '00:41 - 00:48',
+    scene: '甄选皮料',
+    shotType: '微距特写',
+    visual: '极近距离拍摄各类进口真皮面料。清晰展现皮料自然生长的毛孔质感、细微的天然纹理。',
+    subtitle: '',
+    vo: '好的皮具，始于优质原料。EIKI 坚持严选进口高端真皮面料，',
+    image: null
+  },
+  {
+    id: 'shot-8',
+    time: '00:48 - 00:55',
+    scene: '甄选皮料',
+    shotType: '中近景',
+    visual: '主理人双手拿起两块不同质感的皮料进行对比，眼神专注。手指轻轻折叠、按压皮料，展示其极佳的韧性与回弹。',
+    subtitle: '进口皮料・一线高奢同源',
+    vo: '与国际一线高奢品牌同源工厂直供皮料。每一寸皮革都经过层层筛选，无劣质拼接、无合成仿皮，',
+    image: null
+  },
+  {
+    id: 'shot-9',
+    time: '00:56 - 01:15',
+    scene: '高奢质感',
+    shotType: '特写 -> 光影流动',
+    visual: '午后的阳光透过橱窗，正好洒在桌面的皮料上。镜头随着光影移动，凸显皮料表面那一层温润、高级的自然油脂光泽。',
+    subtitle: '',
+    vo: '天然细腻的纹理、温润扎实的质感，经得起近距离细看、经得起岁月打磨，不负每一份挑剔的偏爱。',
+    image: null
+  },
+  {
+    id: 'shot-10',
+    time: '01:16 - 01:22',
+    scene: '全程手作',
+    shotType: '特写',
+    visual: '沉浸式手工起幅。裁皮刀划过皮面的特写，伴随真实的“唰”裁切ASMR音效。刀口利落，线条工整。',
+    subtitle: '',
+    vo: '真正的手作，从不含敷衍与将就。从原料裁切、精准打孔，',
+    image: null
+  },
+  {
+    id: 'shot-11',
+    time: '01:22 - 01:28',
+    scene: '全程手作',
+    shotType: '特写',
+    visual: '法斩精准定位，木槌敲击（清脆实音）。细致打孔，孔距均匀规整，展现强迫症般的舒适感。',
+    subtitle: '主理人全手工・一针一线皆匠心',
+    vo: '到细密缝线、边角打磨、精细抛光，每一道工序，均由主理人亲自上手、全程把控。',
+    image: null
+  },
+  {
+    id: 'shot-12',
+    time: '01:28 - 01:36',
+    scene: '一针匠心',
+    shotType: '特写 -> 升格(慢动作)',
+    visual: '双针马鞍缝法特写。蜡线在孔洞中穿梭拉紧，主理人手部青筋微凸，充满手工力量感与节奏感。',
+    subtitle: '',
+    vo: '我们拒绝机器量产、拒绝流水线同质化，不追求速度，只苛求细节。',
+    image: null
+  },
+  {
+    id: 'shot-13',
+    time: '01:36 - 01:45',
+    scene: '一针匠心',
+    shotType: '特写群像 (快切过渡)',
+    visual: '打磨棒快速修边、床面处理剂涂抹、安装黄铜五金件的清脆咔哒声。多个精细手作动作的视觉节奏混剪。',
+    subtitle: '',
+    vo: '千次穿引，万次打磨，一针一线皆是诚意，一器一物皆藏匠心，让每一件作品，都拥有专属的温度与灵魂。',
+    image: null
+  },
+  {
+    id: 'shot-14',
+    time: '01:46 - 01:52',
+    scene: '温暖陪伴',
+    shotType: '全景 -> 摇镜头',
+    visual: '镜头转至成品陈列区。暖光灯下，各色包包、卡包、表带整齐排列。光影扫过，散发着皮革特有的高级气场。',
+    subtitle: '',
+    vo: '机器制造的是商品，手工雕琢的是陪伴。',
+    image: null
+  },
+  {
+    id: 'shot-15',
+    time: '01:52 - 02:00',
+    scene: '温暖陪伴',
+    shotType: '中近景',
+    visual: '顾客（手部特写为主）在店挑选，轻轻抚摸一只焦糖色马鞍包的皮面，感受真实的触感。',
+    subtitle: '一件皮具・一生陪伴',
+    vo: '一件优质的手工皮具，不会随潮流更迭而褪色，反而会在时光的沉淀中，愈发温润有质感。',
+    image: null
+  },
+  {
+    id: 'shot-16',
+    time: '02:00 - 02:15',
+    scene: '一物传世',
+    shotType: '过肩镜头 -> 慢推',
+    visual: '主理人微笑着将定制好的成品装入精美防尘袋递给顾客。顾客接过，两人相视一笑。定格这治愈的交付瞬间。',
+    subtitle: '',
+    vo: '它陪伴你奔赴日常、见证生活点滴，历经岁月摩挲，慢慢沉淀出独属于你的使用痕迹，成为经久耐用、岁岁相伴的生活挚友。',
+    image: null
+  },
+  {
+    id: 'shot-17',
+    time: '02:16 - 02:22',
+    scene: '品牌收官',
+    shotType: '全景 -> 缓慢后拉',
+    visual: '门店全景慢镜头拉远，展现整个店铺如同一个充满故事的时光盒子，整体高级氛围感拉满。',
+    subtitle: '',
+    vo: '以时光淬炼匠心，以温柔奔赴热爱。十年手作，不负时光，不负知己。',
+    image: null
+  },
+  {
+    id: 'shot-18',
+    time: '02:22 - 02:30',
+    scene: '坐标定格',
+    shotType: '特写 -> 定格',
+    visual: '画面渐暗，最后亮起一道光，聚焦打在背景墙 EIKI 的立体 LOGO 上。随后出现门店地址与品牌标语，干净利落。',
+    subtitle: 'EIKI in TOKYO｜恒隆 3 层 331｜十年手作\n以匠心，待知音',
+    vo: 'EIKI，在大连恒隆，静待每一位热爱质感生活的你。',
+    image: null
+  }
+];
+
+export default function App() {
+  const [shots, setShots] = useState(INITIAL_SHOTS);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const fileInputRefs = useRef({});
+
+  // 处理图片上传
+  const handleImageUpload = (id, event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setShots(shots.map(shot => shot.id === id ? { ...shot, image: reader.result } : shot));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 移除图片
+  const removeImage = (id) => {
+    setShots(shots.map(shot => shot.id === id ? { ...shot, image: null } : shot));
+  };
+
+  // 触发隐藏的文件上传输入框
+  const triggerUpload = (id) => {
+    if (fileInputRefs.current[id]) {
+      fileInputRefs.current[id].click();
+    }
+  };
+
+  // 处理内容编辑
+  const handleFieldChange = (id, field, value) => {
+    setShots(shots.map(shot => shot.id === id ? { ...shot, [field]: value } : shot));
+  };
+
+  // 批量导出JSON
+  const handleExport = () => {
+    const dataStr = JSON.stringify(shots, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'eiki_storyboard_script.json';
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="沉浸全景">
-    
-    <title>沉浸式全景体验 | 视觉漫游</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
-    
-    <!-- 性能优化：提前解析并建立外链连接 -->
-    <link rel="dns-prefetch" href="https://cllli.oss-cn-beijing.aliyuncs.com">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <style>
-        :root {
-            --bg-color: #000000;
-            --text-main: #ffffff;
-            --text-muted: rgba(255, 255, 255, 0.4);
-            --glass-bg: rgba(5, 5, 5, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --transition-smooth: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            --transition-fast: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+    let linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
 
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh; 
-            overflow: hidden; background-color: var(--bg-color);
-            font-family: 'Inter', -apple-system, sans-serif;
-            -webkit-tap-highlight-color: transparent; color: var(--text-main);
-            letter-spacing: 1px;
-        }
+  // 批量导入JSON
+  const handleImport = () => {
+    try {
+      const parsed = JSON.parse(importText);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+        setShots(parsed);
+        setIsModalOpen(false);
+        setImportText('');
+        alert('导入成功！');
+      } else {
+        alert('数据格式不正确，请确保是有效的 JSON 数组。');
+      }
+    } catch (e) {
+      alert('解析失败，请检查 JSON 格式是否正确。');
+    }
+  };
 
-        /* --- 1. 全局初始加载屏 (Splash Screen) --- */
-        #global-loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
-            background: #000000; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 1.2s var(--transition-smooth), visibility 1.2s;
-        }
-        #global-loader.hidden {
-            opacity: 0; visibility: hidden;
-        }
-        .global-brand {
-            font-size: 14px; font-weight: 200; letter-spacing: 12px; color: #fff;
-            text-transform: uppercase;
-            opacity: 0.5;
-            transform: scale(0.95);
-            animation: pulseBrand 2s infinite alternate ease-in-out;
-            transition: transform 2s ease-out, opacity 1s ease;
-        }
-        #global-loader.hidden .global-brand {
-            transform: scale(1.05); /* 隐藏时带有轻微的推入感 */
-            opacity: 0;
-        }
-        @keyframes pulseBrand {
-            0% { opacity: 0.3; }
-            100% { opacity: 0.8; }
-        }
-
-        #webgl-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
-            will-change: transform; 
-        }
-
-        #scene-transition {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 5; opacity: 1; transition: opacity 1.2s ease-out;
-            pointer-events: none;
-            will-change: opacity;
-        }
-
-        #landing-page {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100dvh;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; transition: opacity 0.8s ease, backdrop-filter 0.8s ease;
-            background: rgba(0,0,0,0.3); 
-            will-change: opacity, backdrop-filter;
-        }
-        
-        .landing-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-size: cover; background-position: center;
-            filter: blur(40px) brightness(0.3) grayscale(50%);
-            transform: scale(1.1); z-index: -1; transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out; 
-            will-change: opacity;
-        }
-        
-        .landing-content {
-            display: flex; flex-direction: column; align-items: center;
-            transform: translateY(15px); opacity: 0;
-            animation: contentFadeIn 1.5s var(--transition-smooth) forwards;
-            animation-delay: 0.1s; width: 100%; max-width: 1200px;
-            will-change: transform, opacity;
-        }
-        @keyframes contentFadeIn { to { transform: translateY(0); opacity: 1; } }
-
-        h1 { font-size: 32px; font-weight: 200; margin: 0 0 8px 0; letter-spacing: 8px; text-transform: uppercase; text-align: center;}
-        p.subtitle { font-size: 11px; font-weight: 300; color: var(--text-muted); margin-bottom: 40px; letter-spacing: 4px; text-transform: uppercase; text-align: center;}
-
-        .landing-gallery-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0; }
-        
-        .landing-gallery {
-            display: flex; flex-wrap: wrap; gap: 20px; 
-            width: 100%; max-width: 1050px; max-height: 50vh; 
-            padding: 20px; box-sizing: border-box;
-            overflow-y: auto; overflow-x: hidden;
-            justify-content: center; align-content: flex-start; 
-            -webkit-overflow-scrolling: touch; 
-            will-change: transform;
-        }
-        
-        .landing-gallery::-webkit-scrollbar { width: 4px; display: block; }
-        .landing-gallery::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
-        .landing-gallery::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-        .landing-gallery::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
-
-        @media (max-width: 900px) {
-            h1 { font-size: 24px; letter-spacing: 6px; }
-            .landing-gallery { max-height: 55vh; padding: 15px; }
-        }
-        
-        .thumb-item {
-            flex: 0 0 240px; height: 135px; border-radius: 0; 
-            overflow: hidden; position: relative; cursor: pointer; 
-            transition: var(--transition-fast); 
-            opacity: 0.4; filter: grayscale(100%);
-            border: 1px solid transparent; box-sizing: border-box;
-            will-change: opacity, filter;
-            transform: translateZ(0); 
-        }
-        @media (max-width: 600px) {
-            .thumb-item { flex: 0 0 150px; height: 85px; }
-        }
-
-        .thumb-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-fast); }
-        .thumb-item:hover { opacity: 0.7; filter: grayscale(50%); }
-        .thumb-item.active { 
-            opacity: 1; filter: grayscale(0%); 
-            border: 1px solid rgba(255,255,255,0.7); 
-        }
-        .thumb-item.active img { transform: scale(1.05); }
-
-        .thumb-item .item-title {
-            position: absolute; bottom: 0; left: 0; width: 100%; padding: 12px 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-            text-align: center; font-size: 10px; font-weight: 300; letter-spacing: 3px; 
-            text-transform: uppercase; opacity: 0; transition: var(--transition-fast);
-        }
-        .thumb-item.active .item-title { opacity: 1; }
-
-        .start-btn {
-            margin-top: 30px; background: transparent; border: 1px solid rgba(255,255,255,0.2);
-            color: white; padding: 0 50px; height: 46px; font-size: 11px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase;
-            border-radius: 0; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            display: inline-flex; align-items: center; justify-content: center; gap: 12px; transition: var(--transition-fast);
-            flex-shrink: 0;
-        }
-        .start-btn:hover { background: #fff; color: #000; border-color: #fff; }
-        .start-btn:active { opacity: 0.7; transform: scale(0.98); }
-
-        #hud-controls {
-            position: absolute; bottom: max(30px, env(safe-area-inset-bottom) + 15px);
-            left: 50%; transform: translateX(-50%) translateY(100px);
-            display: flex; gap: 8px; padding: 6px 12px;
-            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border); border-radius: 0; 
-            z-index: 20; transition: var(--transition-smooth); opacity: 0; pointer-events: none;
-            will-change: transform, opacity;
-        }
-        #hud-controls.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-        #hud-controls.idle { opacity: 0; transform: translateX(-50%) translateY(20px); pointer-events: none; }
-        
-        #interaction-layer { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
-
-        .hud-btn {
-            width: 36px; height: 36px; border-radius: 0; background: transparent; border: none;
-            color: var(--text-main); display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: var(--transition-fast); opacity: 0.6;
-        }
-        .hud-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.2; }
-        .hud-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
-        .hud-btn.active { opacity: 1; color: #000; background: #fff; }
-        .hud-btn.active svg { stroke: #000; }
-        .divider { width: 1px; height: 18px; background: var(--glass-border); margin: auto 5px; }
-
-        #gallery-panel {
-            position: absolute; bottom: max(80px, env(safe-area-inset-bottom) + 65px);
-            left: 50%; transform: translateX(-50%) translateY(20px);
-            width: max-content; max-width: 90vw; opacity: 0; pointer-events: none;
-            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border); border-radius: 0;
-            transition: var(--transition-fast); z-index: 15; padding: 12px; display: flex; gap: 12px; overflow-x: auto;
-            will-change: transform, opacity; -webkit-overflow-scrolling: touch;
-        }
-        #gallery-panel.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-        #gallery-panel::-webkit-scrollbar { display: none; }
-
-        .hud-scene-item {
-            width: 100px; height: 56px; border-radius: 0; overflow: hidden; position: relative;
-            cursor: pointer; filter: grayscale(100%); opacity: 0.5; transition: var(--transition-fast); flex-shrink: 0;
-            border: 1px solid transparent; box-sizing: border-box; transform: translateZ(0);
-        }
-        .hud-scene-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transition: var(--transition-fast); }
-        .hud-scene-item.active, .hud-scene-item:hover { filter: grayscale(0%); opacity: 1; }
-        .hud-scene-item.active { border: 1px solid rgba(255,255,255,0.5); }
-        .hud-scene-item.active img { transform: scale(1.1); }
-        .hud-scene-item .title {
-            position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            font-size: 9px; font-weight: 300; letter-spacing: 1px; text-align: center; padding: 4px 0; pointer-events: none;
-            text-transform: uppercase;
-        }
-
-        /* --- 2. 场景切换真实进度条 Loading --- */
-        .loader-wrapper {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 50; flex-direction: column; align-items: center; gap: 15px;
-        }
-        .loader-title {
-            font-size: 10px; font-weight: 300; color: rgba(255,255,255,0.6); 
-            letter-spacing: 4px; text-transform: uppercase;
-        }
-        .progress-bar-container {
-            width: 160px; height: 1px; background: rgba(255,255,255,0.15); 
-            position: relative; overflow: hidden;
-        }
-        .progress-bar-fill {
-            position: absolute; top: 0; left: 0; height: 100%; width: 0%; 
-            background: #fff; transition: width 0.2s ease-out;
-        }
-        .progress-text { 
-            font-size: 9px; font-weight: 300; color: rgba(255,255,255,0.8); 
-            letter-spacing: 2px; font-variant-numeric: tabular-nums;
-        }
-
-        #toast-msg {
-            position: absolute; top: max(40px, env(safe-area-inset-top) + 20px); left: 50%;
-            transform: translateX(-50%) translateY(-20px); color: #fff; font-size: 10px; font-weight: 300; letter-spacing: 4px;
-            text-transform: uppercase; opacity: 0; transition: var(--transition-fast);
-            z-index: 200; pointer-events: none; will-change: transform, opacity;
-        }
-        #toast-msg.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-
-    </style>
-</head>
-<body>
-
-    <!-- 全局初始加载动画 -->
-    <div id="global-loader">
-        <div class="global-brand">VISUALS SPACE</div>
-    </div>
-
-    <div id="webgl-container"></div>
-    <div id="scene-transition"></div>
-    
-    <div id="interaction-layer"></div>
-
-    <div id="landing-page">
-        <div class="landing-bg" id="landing-bg"></div>
-        <div class="landing-content">
-            <h1>Visuals Space</h1>
-            <p class="subtitle">Immersive 3D Experience</p>
-            
-            <div class="landing-gallery-wrapper">
-                <div class="landing-gallery" id="landing-gallery"></div>
-                <button class="start-btn" id="startBtn">
-                    Enter
-                </button>
+  return (
+    <div className="min-h-screen bg-[#F9F8F6] text-[#3D3835] font-sans selection:bg-[#D4C3B3] selection:text-white pb-20">
+      {/* 顶部导航 */}
+      <header className="sticky top-0 z-50 bg-[#F9F8F6]/90 backdrop-blur-md border-b border-[#E8E4DF] px-6 py-4 shadow-sm">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#3D3835] text-[#F9F8F6] rounded-md flex items-center justify-center font-serif text-xl font-bold tracking-widest shadow-md">
+              E
             </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-wide text-[#3D3835]">EIKI 品牌视频分镜管理</h1>
+              <p className="text-xs text-[#8C837A] tracking-wider mt-0.5">大连恒隆 3 分钟治愈系匠心短片</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-[#D4C3B3] text-[#5C544D] rounded-md text-sm hover:bg-[#F3EFEA] transition-colors shadow-sm"
+            >
+              <Import size={16} />
+              <span>批量导入</span>
+            </button>
+            <button 
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 bg-[#8C7A6B] text-white rounded-md text-sm hover:bg-[#736457] transition-colors shadow-md"
+            >
+              <Download size={16} />
+              <span>导出脚本</span>
+            </button>
+          </div>
         </div>
-    </div>
-    
-    <!-- 场景切换真实进度条加载动画 -->
-    <div class="loader-wrapper" id="loader">
-        <div class="loader-title">Loading Environment</div>
-        <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="progress-fill"></div>
+      </header>
+
+      {/* 主体内容 */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+        <div className="mb-8 bg-white p-6 rounded-xl border border-[#E8E4DF] shadow-sm flex flex-col md:flex-row gap-6 items-center">
+           <div className="flex-1">
+             <h2 className="text-lg font-bold mb-2 flex items-center gap-2"><Video size={20} className="text-[#8C7A6B]"/> 整体风格与调性</h2>
+             <p className="text-sm text-[#5C544D] leading-relaxed">
+               <span className="font-semibold text-[#3D3835]">风格：</span>治愈、高级、温暖、质感，节奏舒缓，适配手工匠心氛围感。<br/>
+               <span className="font-semibold text-[#3D3835]">音乐：</span>轻柔小众纯音乐（推荐吉他、大提琴或低音钢琴），全程低音量铺垫。<br/>
+               <span className="font-semibold text-[#3D3835]">色彩：</span>大地色系（琥珀色、原木色、焦糖色）、暖光为主。
+             </p>
+           </div>
+           <div className="bg-[#F9F8F6] p-4 rounded-lg border border-[#E8E4DF] min-w-[200px] text-center">
+             <div className="text-3xl font-serif text-[#8C7A6B] mb-1">{shots.length}</div>
+             <div className="text-xs text-[#8C837A] uppercase tracking-widest">Total Shots</div>
+           </div>
         </div>
-        <div class="progress-text" id="load-progress">0%</div>
-    </div>
 
-    <div id="hud-controls">
-        <button class="hud-btn" id="btn-gallery" title="Scenes">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-        </button>
-        <div class="divider"></div>
-        <button class="hud-btn" id="btn-planet" title="Planet Mode">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"></circle><ellipse cx="12" cy="12" rx="11" ry="3" transform="rotate(20 12 12)"></ellipse></svg>
-        </button>
-        <button class="hud-btn" id="btn-auto" title="Auto Rotate">
-            <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l5.08 5.08"></path></svg>
-        </button>
-        <div class="divider"></div>
-        <button class="hud-btn" id="btn-fullscreen" title="Fullscreen">
-            <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-        </button>
-    </div>
+        {/* 分镜网格 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {shots.map((shot, index) => (
+            <div key={shot.id} className="bg-white rounded-xl border border-[#E8E4DF] shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+              
+              {/* 卡片头部 */}
+              <div className="flex justify-between items-center px-5 py-3 border-b border-[#F3EFEA] bg-[#FAFAF9]">
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-[#E8E4DF] text-[#5C544D] flex items-center justify-center text-sm font-bold font-serif">
+                    {index + 1}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-[#3D3835]">{shot.scene}</span>
+                    <span className="text-xs text-[#8C837A] flex items-center gap-1"><Clock size={12}/> {shot.time}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 bg-[#F3EFEA] text-[#736457] rounded-md border border-[#E8E4DF]">
+                    {shot.shotType}
+                  </span>
+                  <button 
+                    onClick={() => setEditingId(editingId === shot.id ? null : shot.id)}
+                    className="p-1.5 text-[#8C837A] hover:text-[#3D3835] hover:bg-[#E8E4DF] rounded-md transition-colors"
+                  >
+                    {editingId === shot.id ? <Check size={16} /> : <Edit3 size={16} />}
+                  </button>
+                </div>
+              </div>
 
-    <div id="gallery-panel"></div>
-    <div id="toast-msg"><span id="toast-text"></span></div>
-
-    <script>
-        const SCENE_LIST = [
-            { id: 0, name: "东港", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P1.jpg" },
-            { id: 1, name: "东港概念", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P4.jpg" },
-            { id: 2, name: "冰峪沟", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P3.jpg" },
-            { id: 3, name: "中山广场", url: "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/P2.jpg" },
-            { id: 4, name: "黑石礁", "url": "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/insta360/IMG_20260404_195643_414.JPG" },
-            { id: 5, name: "黑石礁", "url": "https://cllli.oss-cn-beijing.aliyuncs.com/img/panoramic/insta360/IMG_20260404_195652_912.JPG" },
-
-        ];
-
-        // 获取优化后的图片 URL
-        function getOptimizedUrl(url, isThumb = false) {
-            if (url.includes('aliyuncs.com')) {
-                if (isThumb) return url + "?x-oss-process=image/resize,w_400/quality,q_80";
-                return url + "?x-oss-process=image/quality,q_90";
-            }
-            return url;
-        }
-
-        let currentSceneId = 0;
-        let isVRActive = false;
-        
-        let scene, camera, renderer, material, textureLoader;
-        
-        let lon = 0, lat = 0, fov = 140; 
-        let targetLon = 0, targetLat = 0, targetFov = 140;
-        
-        let planetEffect = 0.0, targetPlanetEffect = 0.0; 
-        
-        let isUserInteracting = false;
-        let onPointerDownPointerX = 0, onPointerDownPointerY = 0;
-        let onPointerDownLon = 0, onPointerDownLat = 0;
-
-        let isAutoRotating = false;
-        let isPlanetMode = false;
-        let idleTimer;
-
-        let preloadedFirstTexture = null;
-
-        const els = {
-            globalLoader: document.getElementById('global-loader'),
-            startBtn: document.getElementById('startBtn'),
-            landing: document.getElementById('landing-page'),
-            landingBg: document.getElementById('landing-bg'),
-            landingGallery: document.getElementById('landing-gallery'),
-            loader: document.getElementById('loader'),
-            progressFill: document.getElementById('progress-fill'),
-            progressText: document.getElementById('load-progress'),
-            hud: document.getElementById('hud-controls'),
-            galleryPanel: document.getElementById('gallery-panel'),
-            toast: document.getElementById('toast-msg'),
-            toastText: document.getElementById('toast-text'),
-            webglContainer: document.getElementById('webgl-container'),
-            interactionLayer: document.getElementById('interaction-layer'),
-            transitionBox: document.getElementById('scene-transition')
-        };
-
-        // --- 初始化基础 UI ---
-        function initUI() {
-            els.landingBg.style.backgroundImage = `url('${getOptimizedUrl(SCENE_LIST[0].url, true)}')`;
-            renderGalleries();
-
-            // 当窗口资源加载完成后，隐藏全局启动屏
-            window.onload = () => {
-                setTimeout(() => {
-                    els.globalLoader.classList.add('hidden');
-                }, 800); // 稍微延迟展示品牌感
-            };
-
-            // 后台静默下载第一张高清图
-            setTimeout(() => {
-                const tempLoader = new THREE.TextureLoader();
-                tempLoader.setCrossOrigin('anonymous');
-                tempLoader.load(getOptimizedUrl(SCENE_LIST[0].url, false), (texture) => {
-                    texture.generateMipmaps = false;
-                    texture.minFilter = THREE.LinearFilter;
-                    texture.magFilter = THREE.LinearFilter;
-                    texture.wrapS = THREE.RepeatWrapping;
-                    preloadedFirstTexture = texture; 
-                });
-            }, 500); 
-        }
-
-        function renderGalleries() {
-            if (els.landingGallery.children.length === 0) {
-                SCENE_LIST.forEach((sceneData, index) => {
-                    const lItem = document.createElement('div');
-                    lItem.className = `thumb-item ${index === currentSceneId ? 'active' : ''}`;
-                    lItem.addEventListener('click', () => updateLandingSelection(index));
-                    lItem.innerHTML = `
-                        <img src="${getOptimizedUrl(sceneData.url, true)}" loading="lazy">
-                        <div class="item-title">${sceneData.name}</div>
-                    `;
-                    els.landingGallery.appendChild(lItem);
-
-                    const hItem = document.createElement('div');
-                    hItem.className = `hud-scene-item ${index === currentSceneId ? 'active' : ''}`;
-                    hItem.addEventListener('click', () => switchVRScene(index));
-                    hItem.innerHTML = `<img src="${getOptimizedUrl(sceneData.url, true)}" loading="lazy"><div class="title">${sceneData.name}</div>`;
-                    els.galleryPanel.appendChild(hItem);
-                });
-            } else {
-                Array.from(els.landingGallery.children).forEach((el, idx) => el.classList.toggle('active', idx === currentSceneId));
-                Array.from(els.galleryPanel.children).forEach((el, idx) => el.classList.toggle('active', idx === currentSceneId));
-            }
-        }
-
-        function updateLandingSelection(index) {
-            if (index === currentSceneId) return;
-            currentSceneId = index;
-            renderGalleries();
-            els.landingBg.style.opacity = 0;
-            setTimeout(() => {
-                 els.landingBg.style.backgroundImage = `url('${getOptimizedUrl(SCENE_LIST[index].url, true)}')`;
-                 els.landingBg.style.opacity = 1;
-            }, 300);
-        }
-
-        function showToast(text) {
-            els.toastText.innerText = text;
-            els.toast.classList.add('show');
-            setTimeout(() => els.toast.classList.remove('show'), 2500);
-        }
-
-        function initThreeJS() {
-            scene = new THREE.Scene();
-            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-            
-            const geometry = new THREE.PlaneGeometry(2, 2);
-            
-            material = new THREE.ShaderMaterial({
-                uniforms: {
-                    tEquirect: { value: null },
-                    uFov: { value: THREE.MathUtils.degToRad(75) },
-                    uAspect: { value: window.innerWidth / window.innerHeight },
-                    uRotation: { value: new THREE.Vector2(0, 0) },
-                    uPlanet: { value: 0.0 } 
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform sampler2D tEquirect;
-                    uniform float uFov;
-                    uniform float uAspect;
-                    uniform vec2 uRotation;
-                    uniform float uPlanet;
-
-                    varying vec2 vUv;
-                    const float PI = 3.14159265359;
-
-                    vec3 rotateX(vec3 v, float angle) {
-                        float s = sin(angle);
-                        float c = cos(angle);
-                        return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z);
-                    }
-
-                    vec3 rotateY(vec3 v, float angle) {
-                        float s = sin(angle);
-                        float c = cos(angle);
-                        return vec3(c * v.x - s * v.z, v.y, s * v.x + c * v.z);
-                    }
-
-                    void main() {
-                        vec2 pUv = vUv * 2.0 - 1.0;
-                        pUv.x *= uAspect;
-
-                        float R = length(pUv);
-                        float param = 1.0 + uPlanet; 
-
-                        float theta = 0.0;
-                        if (R > 0.0001) {
-                            float f = 1.0 / (param * tan(uFov / (2.0 * param)));
-                            theta = param * atan(R / (param * f));
-                        }
-
-                        float phi_screen = atan(pUv.y, pUv.x);
-
-                        vec3 ray = vec3(
-                            sin(theta) * cos(phi_screen),
-                            sin(theta) * sin(phi_screen),
-                            -cos(theta)
-                        );
-
-                        ray = rotateX(ray, uRotation.y);
-                        ray = rotateY(ray, uRotation.x);
-
-                        float theta_tex = atan(ray.x, -ray.z);
-                        float phi_tex = asin(clamp(ray.y, -1.0, 1.0));
-                        vec2 texUv = vec2(0.5 + theta_tex / (2.0 * PI), 0.5 + phi_tex / PI);
-
-                        gl_FragColor = texture2D(tEquirect, texUv);
-                    }
-                `
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
-
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            els.webglContainer.appendChild(renderer.domElement);
-
-            textureLoader = new THREE.TextureLoader();
-            textureLoader.setCrossOrigin('anonymous'); 
-
-            animate();
-            bindInteractionEvents();
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        // 处理从贴图应用到 UI 过渡的逻辑
-        function applyTextureAndTransition(texture, sceneName, isFirstLoad) {
-            material.uniforms.tEquirect.value = texture;
-
-            setTimeout(() => {
-                els.loader.style.display = 'none';
-                els.transitionBox.style.opacity = '0'; 
+              {/* 卡片内容区 */}
+              <div className="flex flex-col sm:flex-row flex-1 p-5 gap-5">
                 
-                if (isFirstLoad) {
-                    els.landing.style.opacity = '0';
-                    els.landing.style.pointerEvents = 'none';
-                    els.hud.classList.add('visible');
-                    
-                    // 加快电影级缓推入开场
-                    setTimeout(() => {
-                        targetLat = 0;
-                        targetPlanetEffect = 0.0;
-                        targetFov = window.innerWidth / window.innerHeight < 1 ? 95 : 75;
-                        isAutoRotating = true; 
-                        document.getElementById('btn-auto').classList.add('active');
-                        document.getElementById('btn-auto').innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-                    }, 200); 
-                }
-                
-                showToast(sceneName);
-                resetIdleTimer();
-            }, 100);
-        }
+                {/* 左侧：图片上传/预览区 */}
+                <div className="sm:w-2/5 flex-shrink-0">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={el => fileInputRefs.current[shot.id] = el}
+                    onChange={(e) => handleImageUpload(shot.id, e)}
+                  />
+                  
+                  {shot.image ? (
+                    <div className="relative w-full aspect-video sm:aspect-square bg-[#F9F8F6] rounded-lg overflow-hidden border border-[#E8E4DF] group/image">
+                      <img src={shot.image} alt="Shot Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
+                        <button 
+                          onClick={() => triggerUpload(shot.id)}
+                          className="p-2 bg-white/20 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition-colors"
+                          title="更换图片"
+                        >
+                          <ImagePlus size={18} />
+                        </button>
+                        <button 
+                          onClick={() => removeImage(shot.id)}
+                          className="p-2 bg-red-500/60 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-colors"
+                          title="删除图片"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => triggerUpload(shot.id)}
+                      className="w-full aspect-video sm:aspect-square bg-[#FAFAF9] border-2 border-dashed border-[#D4C3B3] rounded-lg flex flex-col items-center justify-center text-[#8C837A] hover:bg-[#F3EFEA] hover:border-[#8C7A6B] hover:text-[#5C544D] cursor-pointer transition-all gap-2 p-4 text-center group/upload"
+                    >
+                      <div className="p-3 bg-white rounded-full shadow-sm group-hover/upload:scale-110 transition-transform">
+                        <Camera size={24} className="text-[#8C7A6B]" />
+                      </div>
+                      <span className="text-sm font-medium">点击上传参考图</span>
+                      <span className="text-xs text-[#A39A92]">JPG / PNG</span>
+                    </div>
+                  )}
+                </div>
 
-        function loadPanorama(url, isFirstLoad = false) {
-            const sceneName = SCENE_LIST[currentSceneId].name;
-            
-            if (isFirstLoad && currentSceneId === 0 && preloadedFirstTexture) {
-                applyTextureAndTransition(preloadedFirstTexture, sceneName, true);
-                return;
-            }
+                {/* 右侧：文本描述区 */}
+                <div className="flex-1 flex flex-col gap-4 text-sm">
+                  {/* 画面描述 */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[#8C7A6B] font-semibold text-xs uppercase tracking-wider">
+                      <Video size={14} /> 画面 Visual
+                    </div>
+                    {editingId === shot.id ? (
+                      <textarea 
+                        value={shot.visual}
+                        onChange={(e) => handleFieldChange(shot.id, 'visual', e.target.value)}
+                        className="w-full text-sm p-2 bg-[#F9F8F6] border border-[#D4C3B3] rounded-md focus:outline-none focus:border-[#8C7A6B] min-h-[80px]"
+                      />
+                    ) : (
+                      <p className="text-[#3D3835] leading-relaxed">{shot.visual}</p>
+                    )}
+                  </div>
 
-            // 显示并重置进度条
-            els.loader.style.display = 'flex';
-            els.progressText.innerText = "0%";
-            els.progressFill.style.width = "0%";
-            els.transitionBox.style.opacity = '1'; 
+                  {/* 字幕 */}
+                  { (shot.subtitle || editingId === shot.id) && (
+                    <div className="space-y-1.5 border-t border-dashed border-[#E8E4DF] pt-3">
+                      <div className="flex items-center gap-1.5 text-[#8C7A6B] font-semibold text-xs uppercase tracking-wider">
+                        <AlignLeft size={14} /> 核心字幕 Subtitle
+                      </div>
+                      {editingId === shot.id ? (
+                        <input 
+                          type="text"
+                          value={shot.subtitle}
+                          onChange={(e) => handleFieldChange(shot.id, 'subtitle', e.target.value)}
+                          className="w-full text-sm p-2 bg-[#F9F8F6] border border-[#D4C3B3] rounded-md focus:outline-none focus:border-[#8C7A6B]"
+                          placeholder="留空则无字幕"
+                        />
+                      ) : (
+                        shot.subtitle && (
+                          <div className="bg-[#3D3835] text-[#F9F8F6] px-3 py-2 rounded-md font-medium tracking-wide text-center">
+                            {shot.subtitle.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
 
-            textureLoader.load(
-                getOptimizedUrl(url, false),
-                (texture) => {
-                    texture.generateMipmaps = false;
-                    texture.minFilter = THREE.LinearFilter;
-                    texture.magFilter = THREE.LinearFilter;
-                    texture.wrapS = THREE.RepeatWrapping;
-                    
-                    applyTextureAndTransition(texture, sceneName, isFirstLoad);
-                },
-                (xhr) => {
-                    if (xhr.lengthComputable) {
-                        const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
-                        els.progressText.innerText = percentComplete + '%';
-                        els.progressFill.style.width = percentComplete + '%'; // 实时更新实体进度条
-                    }
-                },
-                (err) => {
-                    els.loader.style.display = 'none';
-                    showToast("LOAD FAILED");
-                }
-            );
-        }
+                  {/* 旁白 */}
+                  { (shot.vo || editingId === shot.id) && (
+                    <div className="space-y-1.5 border-t border-dashed border-[#E8E4DF] pt-3">
+                      <div className="flex items-center gap-1.5 text-[#8C7A6B] font-semibold text-xs uppercase tracking-wider">
+                        <Mic size={14} /> 旁白 Voiceover
+                      </div>
+                      {editingId === shot.id ? (
+                        <textarea 
+                          value={shot.vo}
+                          onChange={(e) => handleFieldChange(shot.id, 'vo', e.target.value)}
+                          className="w-full text-sm p-2 bg-[#F9F8F6] border border-[#D4C3B3] rounded-md focus:outline-none focus:border-[#8C7A6B] min-h-[60px]"
+                          placeholder="留空则无旁白"
+                        />
+                      ) : (
+                        shot.vo && (
+                          <p className="text-[#5C544D] italic relative pl-4 before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-1 before:bg-[#D4C3B3] before:rounded-full">
+                            "{shot.vo}"
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
 
-        function bindInteractionEvents() {
-            const layer = els.interactionLayer;
-            
-            layer.addEventListener('mousedown', onPointerDown);
-            layer.addEventListener('touchstart', (e) => onPointerDown(e.touches[0]), { passive: false });
-            
-            window.addEventListener('mousemove', onPointerMove);
-            window.addEventListener('touchmove', (e) => onPointerMove(e.touches[0]), { passive: false });
-            
-            window.addEventListener('mouseup', onPointerUp);
-            window.addEventListener('touchend', onPointerUp);
-            
-            layer.addEventListener('wheel', (e) => {
-                targetFov += e.deltaY * 0.05;
-                if (isPlanetMode) {
-                    targetFov = Math.max(150, Math.min(340, targetFov));
-                } else {
-                    targetFov = Math.max(30, Math.min(140, targetFov));
-                }
-                resetIdleTimer();
-            }, { passive: true });
-        }
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
 
-        function onPointerDown(event) {
-            isUserInteracting = true;
-            onPointerDownPointerX = event.clientX;
-            onPointerDownPointerY = event.clientY;
-            onPointerDownLon = lon;
-            onPointerDownLat = lat;
-            
-            if (isAutoRotating) {
-                isAutoRotating = false;
-                document.getElementById('btn-auto').classList.remove('active');
-                document.getElementById('btn-auto').innerHTML = `<svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l5.08 5.08"></path></svg>`;
-            }
-            resetIdleTimer();
-        }
+      {/* 导入弹窗 */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-[#E8E4DF] flex justify-between items-center bg-[#FAFAF9]">
+              <h3 className="font-bold text-lg text-[#3D3835] flex items-center gap-2">
+                <Import size={20} className="text-[#8C7A6B]"/> 批量导入脚本 (JSON 格式)
+              </h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-[#8C837A] hover:text-[#3D3835] p-1 rounded-md hover:bg-[#E8E4DF] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-[#5C544D] mb-4">请将导出的 JSON 数组格式脚本粘贴在此处，结构须包含 id, time, scene, visual, subtitle, vo 等字段。</p>
+              <textarea 
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="[{ 'id': 'shot-1', 'time': '0-5s', ... }]"
+                className="w-full h-64 p-4 font-mono text-sm bg-[#F9F8F6] border border-[#D4C3B3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C7A6B]/50 resize-none text-[#5C544D]"
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-[#E8E4DF] bg-[#FAFAF9] flex justify-end gap-3">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-sm text-[#5C544D] hover:bg-[#E8E4DF] rounded-md transition-colors font-medium"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleImport}
+                className="px-4 py-2 text-sm bg-[#3D3835] text-white hover:bg-[#2A2624] rounded-md transition-colors font-medium shadow-md flex items-center gap-2"
+              >
+                <Save size={16} /> 确认覆盖导入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        function onPointerMove(event) {
-            if (isUserInteracting) {
-                const sensitivity = (fov / 75) * 0.12;
-                targetLon = (onPointerDownPointerX - event.clientX) * sensitivity + onPointerDownLon;
-                targetLat = (event.clientY - onPointerDownPointerY) * sensitivity + onPointerDownLat;
-                resetIdleTimer();
-            }
-        }
+    </div>
+  );
+}
 
-        function onPointerUp() { isUserInteracting = false; }
-
-        function onWindowResize() {
-            if (!renderer) return;
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            const aspect = window.innerWidth / window.innerHeight;
-            material.uniforms.uAspect.value = aspect;
-            if(!isPlanetMode) {
-                targetFov = aspect < 1 ? 95 : 75; 
-            } else {
-                targetFov = aspect < 1 ? 300 : 260; 
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if(!isVRActive) return;
-
-            if (isAutoRotating && !isUserInteracting) {
-                targetLon += 0.08;
-            }
-
-            targetLat = Math.max(-90, Math.min(90, targetLat));
-
-            lon += (targetLon - lon) * 0.1; 
-            lat += (targetLat - lat) * 0.1;
-            fov += (targetFov - fov) * 0.05;
-            planetEffect += (targetPlanetEffect - planetEffect) * 0.05;
-
-            material.uniforms.uFov.value = THREE.MathUtils.degToRad(fov);
-            material.uniforms.uRotation.value.set(
-                THREE.MathUtils.degToRad(lon), 
-                THREE.MathUtils.degToRad(lat)
-            );
-            material.uniforms.uPlanet.value = planetEffect;
-
-            renderer.render(scene, camera);
-        }
-
-        els.startBtn.addEventListener('click', async () => {
-            try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); } catch(e) {}
-            els.landing.style.backdropFilter = 'blur(0px)';
-            document.querySelector('.landing-content').style.opacity = '0';
-            
-            if (!scene) initThreeJS();
-            isVRActive = true;
-            loadPanorama(SCENE_LIST[currentSceneId].url, true);
-        });
-
-        function switchVRScene(index) {
-            if (index === currentSceneId) { toggleGalleryPanel(); return; }
-            currentSceneId = index;
-            toggleGalleryPanel(); 
-            renderGalleries(); 
-            if (isPlanetMode) togglePlanetMode(); 
-            loadPanorama(SCENE_LIST[index].url, false);
-        }
-
-        function toggleGalleryPanel() {
-            els.galleryPanel.classList.toggle('open');
-            document.getElementById('btn-gallery').classList.toggle('active');
-            resetIdleTimer();
-        }
-        document.getElementById('btn-gallery').addEventListener('click', (e) => { e.stopPropagation(); toggleGalleryPanel(); });
-
-        function togglePlanetMode() {
-            isPlanetMode = !isPlanetMode;
-            document.getElementById('btn-planet').classList.toggle('active', isPlanetMode);
-            const aspect = window.innerWidth / window.innerHeight;
-            
-            if (isPlanetMode) {
-                targetPlanetEffect = 1.0; 
-                targetLat = -90;          
-                targetFov = aspect < 1 ? 300 : 260;          
-                if(!isAutoRotating) document.getElementById('btn-auto').click(); 
-                showToast("PLANET MODE");
-            } else {
-                targetPlanetEffect = 0.0; 
-                targetLat = 0;
-                targetFov = aspect < 1 ? 95 : 75;
-                showToast("NORMAL MODE");
-            }
-            resetIdleTimer();
-        }
-        document.getElementById('btn-planet').addEventListener('click', togglePlanetMode);
-
-        document.getElementById('btn-auto').addEventListener('click', () => {
-            isAutoRotating = !isAutoRotating;
-            const btn = document.getElementById('btn-auto');
-            if (isAutoRotating) {
-                btn.classList.add('active');
-                btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-            } else {
-                btn.classList.remove('active');
-                btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l5.08 5.08"></path></svg>`;
-            }
-            resetIdleTimer();
-        });
-
-        document.getElementById('btn-fullscreen').addEventListener('click', async () => {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                try { if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); } catch(e){}
-            } else {
-                try { if(document.exitFullscreen) await document.exitFullscreen(); } catch(e){}
-            }
-            resetIdleTimer();
-        });
-
-        els.interactionLayer.addEventListener('click', (e) => {
-            if (els.galleryPanel.classList.contains('open')) toggleGalleryPanel();
-            resetIdleTimer();
-        });
-
-        function resetIdleTimer() {
-            clearTimeout(idleTimer);
-            els.hud.classList.remove('idle');
-            idleTimer = setTimeout(() => {
-                if (!els.galleryPanel.classList.contains('open') && isVRActive) els.hud.classList.add('idle');
-            }, 3000);
-        }
-
-        initUI();
-
-    </script>
-
-    <!-- ==========================================
-         Microsoft Clarity 性能优化加载方案 
-    ========================================== -->
-    <script type="text/javascript">
-        // 核心优化思路：完全不阻塞主渲染线程和首屏图片加载
-        window.addEventListener('load', function() {
-            // 定义 Clarity 的初始化函数
-            var initClarity = function() {
-                (function(c,l,a,r,i,t,y){
-                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                })(window, document, "clarity", "script", "qt6tim5n2h");
-            };
-
-            // 使用 requestIdleCallback 确保在浏览器空闲时再执行脚本加载
-            if ('requestIdleCallback' in window) {
-                requestIdleCallback(initClarity);
-            } else {
-                // 如果浏览器不支持，则在页面加载完毕后再延迟1秒执行，确保绝对不抢网速
-                setTimeout(initClarity, 1000);
-            }
-        });
-    </script>
-</body>
-</html>
+```
